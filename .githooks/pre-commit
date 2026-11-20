@@ -2,9 +2,11 @@
 set -e
 
 echo "[pre-commit] Running syntax check and Test Contract verification suite..."
-if [ -f "headless.py" ]; then
-  python3 -m py_compile headless.py run_game.py src/sim.py
-fi
+for pyfile in headless.py run_game.py src/sim.py; do
+  if [ -f "$pyfile" ]; then
+    python3 -m py_compile "$pyfile"
+  fi
+done
 if ls tests/test_*.py >/dev/null 2>&1; then
   python3 -m unittest discover -s tests
 fi
