@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -e
+
+echo "[pre-commit] Running syntax check and Test Contract verification suite..."
+if [ -f "headless.py" ]; then
+  python3 -m py_compile headless.py run_game.py src/sim.py
+fi
+if ls tests/test_*.py >/dev/null 2>&1; then
+  python3 -m unittest discover -s tests
+fi
+echo "[pre-commit] All checks passed!"
