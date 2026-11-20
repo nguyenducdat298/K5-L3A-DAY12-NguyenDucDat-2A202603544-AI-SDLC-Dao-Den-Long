@@ -1,0 +1,13 @@
+test_contract_json_structure (test_contract_phase1.TestContractPhase1.test_contract_json_structure) ... ok
+test_determinism_identical_sha256 (test_contract_phase1.TestContractPhase1.test_determinism_identical_sha256) ... ok
+test_invalid_inputs_or_scenario_returns_exit_code_2 (test_contract_phase1.TestContractPhase1.test_invalid_inputs_or_scenario_returns_exit_code_2) ... ok
+test_lose_dawn (test_contract_phase1.TestContractPhase1.test_lose_dawn) ... ok
+test_lose_no_flames_and_hit_drop (test_contract_phase1.TestContractPhase1.test_lose_no_flames_and_hit_drop) ... ok
+test_movement_and_cam_yaw_rotation (test_contract_phase1.TestContractPhase1.test_movement_and_cam_yaw_rotation) ... ok
+test_pulse_stun_push_and_safe_radius (test_contract_phase1.TestContractPhase1.test_pulse_stun_push_and_safe_radius) ... ok
+test_win_all_lit_scenario_cli (test_contract_phase1.TestContractPhase1.test_win_all_lit_scenario_cli) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.852s
+
+OK

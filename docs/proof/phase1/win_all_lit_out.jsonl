@@ -1,0 +1,10 @@
+{"type":"snapshot","tick":0,"sim_tick":0,"state":"playing","time_left_s":300.0,"score":0,"player":{"pos":[0.0,0.0,0.0],"flames":3,"carried":0},"lanterns":[{"id":"L1","pos":[0.0,0.0,12.0],"lit":false,"deposited":0},{"id":"L2","pos":[15.0,0.0,0.0],"lit":true,"deposited":3},{"id":"L3","pos":[-15.0,0.0,0.0],"lit":true,"deposited":3},{"id":"L4","pos":[0.0,0.0,-15.0],"lit":true,"deposited":3},{"id":"L5","pos":[12.0,0.0,12.0],"lit":true,"deposited":3}],"shades":[],"motes_active":3,"motes":[{"id":"M1","pos":[0.0,0.0,4.0]},{"id":"M2","pos":[0.0,0.0,8.0]},{"id":"M3","pos":[0.0,0.0,10.0]}]}
+{"type":"event","tick":25,"name":"mote_picked","data":{"carried":1}}
+{"type":"snapshot","tick":60,"sim_tick":60,"state":"playing","time_left_s":299.0,"score":10,"player":{"pos":[0.0,0.0,6.0],"flames":3,"carried":1},"lanterns":[{"id":"L1","pos":[0.0,0.0,12.0],"lit":false,"deposited":0},{"id":"L2","pos":[15.0,0.0,0.0],"lit":true,"deposited":3},{"id":"L3","pos":[-15.0,0.0,0.0],"lit":true,"deposited":3},{"id":"L4","pos":[0.0,0.0,-15.0],"lit":true,"deposited":3},{"id":"L5","pos":[12.0,0.0,12.0],"lit":true,"deposited":3}],"shades":[],"motes_active":2,"motes":[{"id":"M2","pos":[0.0,0.0,8.0]},{"id":"M3","pos":[0.0,0.0,10.0]}]}
+{"type":"event","tick":65,"name":"mote_picked","data":{"carried":2}}
+{"type":"event","tick":85,"name":"mote_picked","data":{"carried":3}}
+{"type":"snapshot","tick":120,"sim_tick":120,"state":"playing","time_left_s":298.0,"score":30,"player":{"pos":[0.0,0.0,12.0],"flames":3,"carried":3},"lanterns":[{"id":"L1","pos":[0.0,0.0,12.0],"lit":false,"deposited":0},{"id":"L2","pos":[15.0,0.0,0.0],"lit":true,"deposited":3},{"id":"L3","pos":[-15.0,0.0,0.0],"lit":true,"deposited":3},{"id":"L4","pos":[0.0,0.0,-15.0],"lit":true,"deposited":3},{"id":"L5","pos":[12.0,0.0,12.0],"lit":true,"deposited":3}],"shades":[],"motes_active":0,"motes":[]}
+{"type":"event","tick":121,"name":"deposit","data":{"lantern_id":"L1","amount":3,"deposited":3}}
+{"type":"event","tick":121,"name":"lantern_lit","data":{"lantern_id":"L1"}}
+{"type":"event","tick":121,"name":"game_over","data":{"result":"won","reason":"all_lit"}}
+{"type":"end","ticks":121,"state":"won","score":1026}
