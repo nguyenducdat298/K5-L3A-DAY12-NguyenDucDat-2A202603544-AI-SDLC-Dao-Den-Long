@@ -13,7 +13,25 @@ function createToonGradientMap() {
   return tex;
 }
 
+function createMistTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createRadialGradient(64, 64, 6, 64, 64, 62);
+  grad.addColorStop(0.0, "rgba(155, 118, 235, 0.65)");
+  grad.addColorStop(0.42, "rgba(96, 62, 175, 0.42)");
+  grad.addColorStop(0.75, "rgba(48, 24, 98, 0.18)");
+  grad.addColorStop(1.0, "rgba(18, 8, 42, 0.0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 const toonGradient = createToonGradientMap();
+const mistTexture = createMistTexture();
 
 function toonMat(color, opts = {}) {
   return new THREE.MeshToonMaterial({
@@ -76,6 +94,7 @@ class AnimeIslandApp {
     this.sim = new GameSimulationJS(this.tuning, 2026);
     this.started = false;
     this.botEnabled = false;
+    this.fogEnabled = true;
     this.camYawDeg = 0;
     this.camPitch = 0.48;
     this.camDist = 13.5;
@@ -116,7 +135,7 @@ class AnimeIslandApp {
     const container = document.getElementById("canvas-container");
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0c061c);
-    this.scene.fog = new THREE.FogExp2(0x0d061f, 0.017);
+    this.scene.fog = new THREE.FogExp2(0x110624, 0.044);
 
     this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 220);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -236,7 +255,38 @@ class AnimeIslandApp {
     }
     this.scene.add(this.cloudsGroup);
 
-    // 3. Starry Anime Night Sky
+    // 3. Volumetric Drifting Dark Mist (Sương Đen) across Đảo Bến
+    this.darkMistPuffs = [];
+    this.mistGroup = new THREE.Group();
+    for (let i = 0; i < 72; i++) {
+      const mat = new THREE.SpriteMaterial({
+        map: mistTexture,
+        color: i % 2 === 0 ? 0x9b76eb : 0x6c46b8,
+        transparent: true,
+        opacity: 0.52,
+        depthWrite: false,
+      });
+      const sprite = new THREE.Sprite(mat);
+      const angle = (2 * Math.PI * i) / 72 + (i % 7) * 0.13;
+      const radius = 3.2 + ((i * 13) % 22);
+      const baseY = 0.55 + (i % 4) * 0.38;
+      const size = 5.5 + (i % 5) * 1.4;
+      sprite.scale.set(size * 1.5, size * 0.65, 1);
+      sprite.position.set(Math.sin(angle) * radius, baseY, Math.cos(angle) * radius);
+      this.mistGroup.add(sprite);
+      this.darkMistPuffs.push({
+        sprite,
+        mat,
+        angle,
+        radius,
+        baseY,
+        speed: (0.045 + (i % 5) * 0.015) * (i % 2 === 0 ? 1 : -1),
+        phase: i * 0.7,
+      });
+    }
+    this.scene.add(this.mistGroup);
+
+    // 4. Starry Anime Night Sky
     const starCount = 420;
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
@@ -547,13 +597,42 @@ class AnimeIslandApp {
       }
     }
 
-    // Dynamic Island Atmosphere Brightening as lanterns are lit (0/5 -> 5/5)
+    // Dynamic Island Atmosphere & Dark Mist (Sương Đen) receding as lanterns are lit (0/5 -> 5/5)
     const progress = litCount / Math.max(1, this.sim.lanterns.length);
-    this.scene.fog.density = 0.018 - progress * 0.008;
-    const skyColor = new THREE.Color(0x0c061c).lerp(new THREE.Color(0x1b2d59), progress);
+    this.scene.fog.density = this.fogEnabled ? 0.036 - progress * 0.025 : 0.008;
+    const skyColor = new THREE.Color(0x110624).lerp(new THREE.Color(0x1b2d59), progress);
     this.scene.background.copy(skyColor);
     this.scene.fog.color.copy(skyColor);
-    this.hemiLight.intensity = 0.85 + progress * 0.75;
+    this.hemiLight.intensity = 0.78 + progress * 0.82;
+
+    // Update drifting 3D Dark Mist Puffs (repelled by Mây's light and lit Great Lanterns)
+    this.mistGroup.visible = this.fogEnabled;
+    const mayClearRadius = 4.2 + carryRatio * 2.8;
+    const lanternClearRadius = Number(this.tuning.safe_radius) * 1.85;
+    const globalMistAlpha = this.fogEnabled ? Math.max(0.05, (1.0 - progress * 0.88) * 0.56) : 0.0;
+
+    for (const puff of this.darkMistPuffs) {
+      const curAngle = puff.angle + elapsedSec * puff.speed;
+      const wobbleR = puff.radius + Math.sin(elapsedSec * 0.7 + puff.phase) * 0.8;
+      const px = Math.sin(curAngle) * wobbleR;
+      const pz = Math.cos(curAngle) * wobbleR;
+      const py = puff.baseY + Math.sin(elapsedSec * 1.3 + puff.phase) * 0.22;
+      puff.sprite.position.set(px, py, pz);
+
+      let localFactor = 1.0;
+      const dMay = Math.hypot(px - p.pos[0], pz - p.pos[2]);
+      if (dMay < mayClearRadius) {
+        localFactor = Math.min(localFactor, Math.max(0.12, (dMay / mayClearRadius) ** 2));
+      }
+      for (const l of this.sim.lanterns) {
+        if (!l.lit) continue;
+        const dL = Math.hypot(px - l.pos[0], pz - l.pos[2]);
+        if (dL < lanternClearRadius) {
+          localFactor = Math.min(localFactor, Math.max(0.0, ((dL - 1.5) / lanternClearRadius) ** 2));
+        }
+      }
+      puff.mat.opacity = globalMistAlpha * localFactor;
+    }
 
     // 3. Sync Motes (Fireflies)
     const activeMoteIds = new Set();
@@ -929,6 +1008,11 @@ class AnimeIslandApp {
     document.getElementById("btn-play-again").addEventListener("click", () => this.restartGame());
     document.getElementById("btn-replay").addEventListener("click", () => this.restartGame());
     document.getElementById("btn-bot").addEventListener("click", () => this.toggleBot());
+    document.getElementById("btn-fog").addEventListener("click", (e) => {
+      this.fogEnabled = !this.fogEnabled;
+      e.currentTarget.textContent = this.fogEnabled ? "🌫️ Sương Mù: BẬT" : "🌫️ Sương Mù: TẮT";
+      e.currentTarget.classList.toggle("active", this.fogEnabled);
+    });
     document.getElementById("btn-audio").addEventListener("click", (e) => {
       this.audio.muted = !this.audio.muted;
       e.currentTarget.textContent = this.audio.muted ? "🔇 Tắt Tiếng" : "🔊 Âm Thanh";
