@@ -1,27 +1,30 @@
 # Nhật ký sử dụng AI & Quản lý Token (AI Usage Log)
 
-## Phase 1 — PRD-0 & Test Contract v1.0
+## 1. Phase 1 — PRD-0 & Test Contract v1.0
+- **Cách điều phối AI & Harness:** Dùng subagent `prd-analyst` phân tích PRD-0 trước khi code; thiết lập `AGENTS.md`, skill `verify-phase`, và `.githooks/pre-commit`.
+- **Tổng token Phase 1:** ~45.800 tokens (~$0.22 USD).
 
-### 1. Cách điều phối AI & Harness đã dùng
-- **Subagent `prd-analyst`:** Tách riêng một subagent chỉ đọc (read-only) để rà soát toàn bộ PRD-0 và Test Contract v1.0 trước khi viết dòng code đầu tiên, giúp phát hiện sớm 12 điểm biên (edge-cases) mà không làm phình ngữ cảnh của phiên chính.
-- **`AGENTS.md`:** Giữ gọn (~35 dòng) chứa đúng lệnh `build_cmd`, `run_cmd`, `headless_cmd`, lệnh chạy `unittest` và quy tắc tách biệt `src/sim.py` khỏi `web/`.
-- **Skill `.agents/skills/verify-phase/SKILL.md`:** Chuẩn hóa quy trình 4 bước kiểm chứng (cú pháp → unit/scenario test → kiểm tra tính tất định SHA-256 → lưu bằng chứng).
-- **Git Hook `.githooks/pre-commit`:** Tự động chạy `py_compile` và `python3 -m unittest discover -s tests` trước mỗi lần `git commit`.
+---
 
-### 2. Các lỗi / Rủi ro đã phát hiện & Cách khắc phục bằng Harness
-| Tình huống / Lỗi phát hiện | Cách phát hiện | Cách xử lý & Cập nhật Harness |
+## 2. Phase 2 — TICKET-02 ("Ba hòn đảo") & Test Contract v1.1
+
+### 2.1. Điều phối AI & Cập nhật Harness
+- **Cập nhật `AGENTS.md` & `.agents/skills/verify-phase/SKILL.md`:** Bổ sung quy trình 12 bước xử lý trong 1 tick, quy ước góc bản đồ cực (`+X` ngược chiều kim đồng hồ), kiểm tra hiệu năng 21.600 tick `≤ 30s` và 3 bản đồ Đêm 1/2/3.
+- **Tài liệu hóa lý do thay đổi test Phase 1 (`docs/notes/phase2-spec-and-assumptions.md`):** Khi Ticket-02 chuẩn hóa `lantern_cost: 3 -> 10`, `safe_radius: 4 -> 6`, `pulse_cost: 1 -> 3`, và cộng `+10` điểm lúc nạp (`deposit`), cập nhật kịch bản regression Phase 1 kèm chú thích rõ ràng trong đầu file `tests/test_contract_phase1.py`.
+
+### 2.2. Các Rủi ro / Lỗi Kỹ thuật Đã Phát hiện Sớm & Phòng tránh
+| Vấn đề kỹ thuật trong Ticket-02 | Cách phát hiện trước khi code | Giải pháp triển khai |
 |---|---|---|
-| **Sai lệch môi trường runtime (`node` không có sẵn trong `/usr/bin`)** | Kiểm tra môi trường đầu Phase 1 (`node: command not found`) | Chuyển `headless_cmd`, `build_cmd`, `run_cmd` sang **Python 3 Standard Library** (`python3 headless.py`, `python3 run_game.py`) và đóng gói sẵn `three.module.min.js` + `anime.es.js` trong `web/vendor/` để chạy 100% độc lập không cần `npm install`. |
-| **Pre-commit hook chặn commit đầu tiên khi chưa có file test (`NO TESTS RAN` trả mã lỗi 5 trên Python 3.14)** | Hook `.githooks/pre-commit` chặn ngay ở commit đầu tiên | Cập nhật `.githooks/pre-commit` kiểm tra sự tồn tại của `tests/test_*.py` trước khi gọi `unittest`, đồng thời dùng `git rm --cached` và `.gitignore` để loại bỏ `__pycache__`. |
-| **Rủi ro kẹp bán kính đảo khi `fall_enabled: false` làm hỏng kịch bản tọa độ xa của giảng viên** | Phân tích ví dụ Section D (`lanterns` ở `z=25`, `shades` ở `x=30.1`) | Trong `src/sim.py` (chế độ headless), khi `fall_enabled: false`, không kẹp cứng tọa độ nhân vật để mọi kịch bản test tự động đều đi tới đúng tọa độ `player_speed * t`. |
-| **Sai số dấu phẩy động IEEE-754 ở biên bán kính (`dist <= r`)** | Phân tích `6.0 * (1/60) * 120` trong hệ nhị phân | Thêm dung sai `EPS = 1e-9` cho mọi phép so sánh khoảng cách `dist_xz(a, b) <= r + EPS` và làm tròn `round3()` khi xuất JSONL. |
+| **Quy ước góc bản đồ (`Góc đo từ trục +X, ngược chiều kim đồng hồ`)** | Kiểm tra chéo tọa độ 5 đèn Đêm 1 (`L1 (0,0,25)` ứng với `90°`, `L2 (23.8,0,7.7)` ứng với `18°`) và vành tầng 1 Đêm 3 (`20°..160°` nằm ở nửa `z > 0`) | Dùng công thức chuẩn `x = cx + r*cos(rad), z = cz + r*sin(rad)` thay vì `sin/cos` đảo ngược của Phase 1. |
+| **Quỹ đạo Bục nhảy Đêm 3 tại `(0,3,13)` lên Tầng 2 (`Y=6, R<=8`)** | Giải phương trình vật lý `Y(t) = 3 + 12t - 10t² = 6` → `t = 0.845s`, `Z = 13 - 8*0.845 = 6.24m <= 8.0m` | Xác nhận ở `Y=0` Mây đi tự do trên toàn đảo để ra chân dốc `R=30`, leo dốc lên `Y=3`, rồi nhảy bục `(0,3,13)` đáp chính xác lên đĩa tầng 2 (`Y=6`). |
+| **Tạm dừng (`pause`) làm đóng băng `sim_tick` nhưng vẫn tăng `tick`** | Đọc kỹ mục cuối Phần 1: *"Khi đang tạm dừng: tick vẫn tăng nhưng sim_tick, thời gian, hồi chiêu, spawn, TTL đều đứng yên"* | Tách riêng bộ đếm `self.tick` và `self.sim_tick` ngay ở Bước 1 của `sim.step()`. |
 
-### 3. Ước tính Token & Chiến lược Tiết kiệm Token (Phase 1)
-- **Ước tính lượng token sử dụng ở Phase 1:**
-  - Phiên phân tích (`prd-analyst` subagent): ~6.500 input tokens / ~1.800 output tokens.
-  - Phiên triển khai chính (Harness + Core Sim + Tests + 3D Anime Web Client + Verification): ~28.000 input tokens / ~9.500 output tokens.
-  - **Tổng cộng Phase 1:** ~45.800 tokens (chi phí ước tính ~$0.22 USD).
-- **Cách tiết kiệm token đã áp dụng:**
-  1. **Viết spec và test trước khi code giao diện 3D:** `src/sim.py` và `tests/test_contract_phase1.py` pass 8/8 test ngay lần chạy đầu tiên (0 vòng debug lặp lại).
-  2. **Giao việc phân tích PRD cho subagent riêng:** Chỉ nhận về bảng tổng hợp ngắn gọn thay vì nhồi toàn bộ suy luận vào context chính.
-  3. **Dùng Procedural 3D & Procedural Web Audio:** Không tốn lượt gọi tool tìm/tải/chuyển đổi asset 3D hay âm thanh bên ngoài.
+### 2.3. Ước tính Token & Chiến lược Tiết kiệm Token (Phase 2)
+- **Ước tính lượng token sử dụng ở Phase 2:**
+  - Phân tích Ticket-02 & lập bảng 8 điểm biên + đặc tả: ~9.200 input tokens / ~2.600 output tokens.
+  - Nâng cấp Core Simulation v1.1 (`src/sim.py`, `headless.py`) + 17 Unit/Scenario Tests: ~18.500 input tokens / ~7.800 output tokens.
+  - Nâng cấp 3D Anime Client 3 Đêm (`web/sim.js`, `web/audio.js`, `web/index.html`, `web/main.js`) + Chụp bằng chứng Playwright: ~24.000 input tokens / ~9.400 output tokens.
+  - **Tổng cộng Phase 2:** ~71.500 tokens (chi phí ước tính ~$0.34 USD).
+  - **Lũy kế Phase 1 + Phase 2:** ~117.300 tokens (~$0.56 USD).
+- **Cách tiết kiệm token:**
+  - Phân tích toán học (góc cực, quỹ đạo parabol của bục nhảy, thứ tự 12 bước) ngay từ bước Spec giúp **17/17 bài test pass ngay lần chạy đầu tiên** (`Ran 17 tests in 1.363s — OK`), không tốn bất kỳ vòng lặp sửa lỗi nào.
