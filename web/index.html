@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đảo Đèn Lồng — Đêm 1: Đảo Bến (3D Anime Edition)</title>
+  <style>
+    :root {
+      --gold: #ffbe4f;
+      --gold-bright: #ffe699;
+      --warm-orange: #ff7b29;
+      --ink-purple: #160b29;
+      --danger-violet: #b833ff;
+      --panel-bg: rgba(15, 10, 32, 0.78);
+      --panel-border: rgba(255, 190, 79, 0.42);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #0a0516;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: #fff8eb;
+    }
+    #canvas-container {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+    }
+    /* Anime Letterbox & Vignette */
+    .vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 2;
+      background: radial-gradient(circle at 50% 50%, transparent 58%, rgba(8, 3, 20, 0.72) 100%);
+    }
+    /* Screen-space Anime.js Pulse Shockwave */
+    #screen-pulse-ring {
+      position: fixed; left: 50%; top: 55%;
+      width: 120px; height: 120px;
+      margin-left: -60px; margin-top: -60px;
+      border-radius: 50%;
+      border: 4px solid var(--gold-bright);
+      box-shadow: 0 0 35px var(--gold), inset 0 0 25px var(--warm-orange);
+      opacity: 0; pointer-events: none; z-index: 4;
+      transform: scale(0.2);
+    }
+    /* Top HUD Layout */
+    #hud {
+      position: fixed; inset: 0; pointer-events: none; z-index: 5;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 18px 24px;
+    }
+    .hud-top {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+      flex-wrap: wrap;
+    }
+    .anime-card {
+      background: var(--panel-bg);
+      border: 1.5px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 14px 18px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      pointer-events: auto;
+    }
+    .brand-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 190, 79, 0.2);
+      padding-bottom: 8px;
+    }
+    .brand-tag {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--gold);
+      background: rgba(255, 190, 79, 0.14);
+      padding: 3px 8px; border-radius: 999px;
+      border: 1px solid rgba(255, 190, 79, 0.35);
+    }
+    .brand-title {
+      font-size: 16px; font-weight: 800; color: var(--gold-bright);
+      text-shadow: 0 0 10px rgba(255, 190, 79, 0.5);
+    }
+    .stats-grid {
+      display: flex; align-items: center; gap: 20px;
+    }
+    .stat-block {
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      color: #c8bee0;
+    }
+    .stat-value {
+      font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 6px;
+    }
+    .flame-pip {
+      display: inline-block; width: 20px; height: 24px;
+      background: radial-gradient(circle at 50% 65%, #fff6c2 10%, #ff9d2e 55%, #ff3d00 90%);
+      border-radius: 50% 50% 45% 45% / 65% 65% 35% 35%;
+      box-shadow: 0 0 12px #ff881a;
+      transition: opacity 0.25s, filter 0.25s;
+    }
+    .flame-pip.lost {
+      opacity: 0.2; filter: grayscale(1); box-shadow: none;
+    }
+    .mote-pills {
+      display: flex; gap: 5px; align-items: center;
+    }
+    .mote-pill {
+      width: 13px; height: 13px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 190, 79, 0.4);
+      transition: all 0.2s;
+    }
+    .mote-pill.filled {
+      background: var(--gold-bright);
+      box-shadow: 0 0 10px var(--gold), 0 0 18px var(--warm-orange);
+      transform: scale(1.12);
+    }
+    .lantern-badges {
+      display: flex; gap: 6px; align-items: center;
+    }
+    .lantern-badge {
+      width: 24px; height: 28px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800;
+      background: rgba(35, 22, 58, 0.8);
+      border: 1.5px solid rgba(180, 150, 230, 0.35);
+      color: #9e8ec2;
+    }
+    .lantern-badge.lit {
+      background: linear-gradient(180deg, #ffe28a, #ff881b);
+      color: #261002;
+      border-color: #fff6cf;
+      box-shadow: 0 0 14px rgba(255, 175, 55, 0.85);
+    }
+    /* Right HUD card */
+    .hud-right-row {
+      display: flex; align-items: center; gap: 22px;
+    }
+    .big-num {
+      font-size: 26px; font-weight: 900; color: var(--gold-bright);
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 14px rgba(255, 180, 60, 0.45);
+    }
+    .btn-row {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .anime-btn {
+      cursor: pointer;
+      background: linear-gradient(135deg, rgba(255, 190, 79, 0.22), rgba(255, 123, 41, 0.28));
+      border: 1.5px solid rgba(255, 190, 79, 0.6);
+      color: #fff5db;
+      font-weight: 700; font-size: 12px;
+      padding: 7px 13px; border-radius: 10px;
+      transition: all 0.18s;
+    }
+    .anime-btn:hover {
+      background: linear-gradient(135deg, rgba(255, 190, 79, 0.45), rgba(255, 123, 41, 0.55));
+      box-shadow: 0 0 15px rgba(255, 180, 60, 0.5);
+      transform: translateY(-1px);
+    }
+    .anime-btn.active {
+      background: linear-gradient(135deg, #ffbe4f, #ff7b29);
+      color: #1c0c02;
+      box-shadow: 0 0 16px rgba(255, 180, 60, 0.8);
+    }
+    /* Center Anime Calligraphy Banner */
+    #anime-banner {
+      position: fixed; top: 24%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.85);
+      background: linear-gradient(90deg, transparent, rgba(20, 10, 40, 0.92) 20%, rgba(20, 10, 40, 0.92) 80%, transparent);
+      border-top: 2px solid var(--gold);
+      border-bottom: 2px solid var(--gold);
+      padding: 14px 56px;
+      text-align: center;
+      pointer-events: none; z-index: 8;
+      opacity: 0;
+    }
+    #anime-banner .banner-sub {
+      font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 4px;
+    }
+    #anime-banner .banner-main {
+      font-size: 28px; font-weight: 900; color: #fff9e6;
+      text-shadow: 0 0 18px var(--warm-orange);
+    }
+    /* Bottom Prompt & Controls Bar */
+    .hud-bottom {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    #context-prompt {
+      background: linear-gradient(135deg, rgba(255, 185, 60, 0.95), rgba(255, 115, 30, 0.95));
+      color: #1f0d00;
+      font-weight: 800; font-size: 14px;
+      padding: 8px 20px; border-radius: 999px;
+      box-shadow: 0 0 22px rgba(255, 170, 45, 0.85);
+      opacity: 0; transform: translateY(10px);
+      pointer-events: none;
+    }
+    .controls-bar {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+      font-size: 12px; color: #dcd2f2;
+      padding: 10px 20px;
+    }
+    .key-cap {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 190, 79, 0.45);
+      color: var(--gold-bright);
+      font-weight: 800; font-size: 11px;
+      padding: 2px 7px; border-radius: 6px;
+      margin-right: 4px;
+    }
+    /* Intro & Game Over Overlay Modals */
+    .overlay-modal {
+      position: fixed; inset: 0; z-index: 15;
+      background: radial-gradient(circle at 50% 45%, rgba(26, 14, 54, 0.84), rgba(7, 3, 18, 0.94));
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(6px);
+    }
+    .modal-box {
+      max-width: 540px; width: 92%;
+      background: rgba(18, 11, 38, 0.94);
+      border: 2px solid var(--gold);
+      border-radius: 22px;
+      padding: 30px 34px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 40px rgba(255, 175, 55, 0.25);
+    }
+    .modal-ep {
+      font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 8px; font-weight: 700;
+    }
+    .modal-title {
+      font-size: 32px; font-weight: 900; color: var(--gold-bright);
+      text-shadow: 0 0 20px rgba(255, 170, 45, 0.65);
+      margin-bottom: 12px;
+    }
+    .modal-story {
+      font-size: 14px; line-height: 1.65; color: #e2d9f7;
+      margin-bottom: 22px;
+    }
+    .cta-btn {
+      cursor: pointer;
+      background: linear-gradient(135deg, #ffcb66, #ff7b29);
+      border: 2px solid #fff3c4;
+      color: #1f0c00;
+      font-size: 16px; font-weight: 900;
+      padding: 12px 32px; border-radius: 999px;
+      box-shadow: 0 0 25px rgba(255, 170, 45, 0.75);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cta-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 35px rgba(255, 195, 85, 0.95);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div class="vignette"></div>
+  <div id="screen-pulse-ring"></div>
+
+  <!-- Anime Episode Banner -->
+  <div id="anime-banner">
+    <div class="banner-sub" id="banner-sub">ĐẢO ĐÈN LỒNG · ĐÊM 1</div>
+    <div class="banner-main" id="banner-main">ĐÈN LỒNG ĐÃ THẮP SÁNG!</div>
+  </div>
+
+  <!-- Main HUD -->
+  <div id="hud">
+    <div class="hud-top">
+      <!-- Left Card: Player & Island Status -->
+      <div class="anime-card">
+        <div class="brand-row">
+          <span class="brand-tag">ĐÊM 1 · ĐẢO BẾN</span>
+          <span class="brand-title">Mây — Người Giữ Đèn</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-block">
+            <span class="stat-label">Lửa Sinh Mệnh</span>
+            <div class="stat-value" id="flames-container">
+              <span class="flame-pip"></span>
+              <span class="flame-pip"></span>
+              <span class="flame-pip"></span>
+            </div>
+          </div>
+          <div class="stat-block">
+            <span class="stat-label">Đom Đóm (<span id="carried-text">0/5</span>)</span>
+            <div class="mote-pills" id="motes-pills">
+              <span class="mote-pill"></span>
+              <span class="mote-pill"></span>
+              <span class="mote-pill"></span>
+              <span class="mote-pill"></span>
+              <span class="mote-pill"></span>
+            </div>
+          </div>
+          <div class="stat-block">
+            <span class="stat-label">Đèn Lồng Lớn (<span id="lanterns-text">0/5</span>)</span>
+            <div class="lantern-badges" id="lantern-badges">
+              <div class="lantern-badge" data-id="L1">L1</div>
+              <div class="lantern-badge" data-id="L2">L2</div>
+              <div class="lantern-badge" data-id="L3">L3</div>
+              <div class="lantern-badge" data-id="L4">L4</div>
+              <div class="lantern-badge" data-id="L5">L5</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Card: Timer, Score, Controls -->
+      <div class="anime-card">
+        <div class="hud-right-row">
+          <div class="stat-block">
+            <span class="stat-label">Trước Bình Minh</span>
+            <div class="big-num" id="timer-display">05:00</div>
+          </div>
+          <div class="stat-block">
+            <span class="stat-label">Điểm Ánh Sáng</span>
+            <div class="big-num" id="score-display">0</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="anime-btn" id="btn-bot" title="Bật/Tắt AI điều khiển Mây tự động">🤖 Tự Chơi (Demo): TẮT</button>
+          <button class="anime-btn" id="btn-audio" title="Bật/Tắt âm thanh">🔊 Âm Thanh</button>
+          <button class="anime-btn" id="btn-replay" title="Chơi lại Đêm 1">↻ Chơi Lại</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Prompt & Key Guide -->
+    <div class="hud-bottom">
+      <div id="context-prompt">Nhấn [F] hoặc [E] để nạp đom đóm thắp Đèn Lồng!</div>
+      <div class="anime-card controls-bar">
+        <span><span class="key-cap">W A S D</span> / <span class="key-cap">↑↓←→</span> Di chuyển</span>
+        <span><span class="key-cap">Space</span> Nhảy</span>
+        <span><span class="key-cap">F</span> / <span class="key-cap">E</span> Thắp Đèn</span>
+        <span><span class="key-cap">R</span> / <span class="key-cap">Shift</span> Tỏa Sáng (Tốn 1 Đom Đóm)</span>
+        <span><span class="key-cap">Q / C</span> hoặc <span class="key-cap">Chuột</span> Xoay Camera</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Anime Episode Intro Overlay -->
+  <div class="overlay-modal" id="intro-modal">
+    <div class="modal-box">
+      <svg width="86" height="86" viewBox="0 0 100 100" style="margin-bottom: 10px;">
+        <path id="intro-svg-path" fill="none" stroke="#ffbe4f" stroke-width="3.5" stroke-linecap="round"
+          d="M35 20 L65 20 L78 45 L65 78 L35 78 L22 45 Z M50 10 L50 20 M38 84 L62 84 M50 38 C56 45, 56 56, 50 64 C44 56, 44 45, 50 38 Z" />
+      </svg>
+      <div class="modal-ep">TẬP 1 · ĐÊM SƯƠNG ĐEN TRÊN ĐẢO BẾN</div>
+      <h1 class="modal-title">ĐẢO ĐÈN LỒNG</h1>
+      <p class="modal-story">
+        Giữa biển mây bồng bềnh, sương đen đã nuốt trọn ánh sáng của 5 chiếc <b>Đèn Lồng Lớn</b>.
+        Cùng cô bé giữ đèn <b>Mây</b> đội chiếc nón lá nhỏ đi gom những đốm <b>Đom Đóm</b> vàng ấm,
+        tỏa sáng xua tan <b>Bóng Mực</b> và thắp sáng lại hòn đảo trước khi đêm tàn!
+      </p>
+      <button class="cta-btn" id="btn-start-game">✨ Bắt Đầu Thắp Đèn</button>
+    </div>
+  </div>
+
+  <!-- Win / Lose Game Over Overlay -->
+  <div class="overlay-modal hidden" id="gameover-modal">
+    <div class="modal-box">
+      <div class="modal-ep" id="go-subtitle">KẾT THÚC ĐÊM 1</div>
+      <h2 class="modal-title" id="go-title">ĐẢO BẾN BỪNG SÁNG!</h2>
+      <p class="modal-story" id="go-desc"></p>
+      <div style="font-size: 22px; font-weight: 900; color: var(--gold-bright); margin-bottom: 22px;">
+        Tổng Điểm: <span id="go-score">0</span>
+      </div>
+      <button class="cta-btn" id="btn-play-again">↻ Chơi Lại Đêm 1</button>
+    </div>
+  </div>
+
+  <script type="module" src="/web/main.js"></script>
+</body>
+</html>
