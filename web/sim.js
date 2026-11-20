@@ -291,6 +291,82 @@ export class GameSimulationJS {
     return false;
   }
 
+  _enforcePlayerWorldCollisions(pos) {
+    this._enforceBellTower(pos);
+
+    // Night 3: Solid horizontal collision with Tier 1 cliff wall (12 <= r <= 24, z >= 0) when player is below Y = 2.65
+    if (this.night === 3 && pos[1] < 2.65) {
+      let onRamp = false;
+      for (const deg of [30.0, 150.0]) {
+        const rad = (deg * Math.PI) / 180.0;
+        const ca = Math.cos(rad);
+        const sa = Math.sin(rad);
+        const pPar = pos[0] * ca + pos[2] * sa;
+        const pPerp = Math.abs(-pos[0] * sa + pos[2] * ca);
+        if (pPerp <= 1.68 && pPar >= 23.4 && pPar <= 30.6) {
+          onRamp = true;
+          break;
+        }
+      }
+      if (!onRamp) {
+        const r = Math.hypot(pos[0], pos[2]);
+        const innerR = 11.45;
+        const outerR = 24.55;
+        const minZ = -0.45;
+        if (r > innerR && r < outerR && pos[2] > minZ) {
+          const dInner = r - innerR;
+          const dOuter = outerR - r;
+          const dSouth = pos[2] - minZ;
+          if (dSouth <= dInner && dSouth <= dOuter) {
+            pos[2] = minZ;
+          } else if (dInner < dOuter) {
+            pos[0] = (pos[0] / r) * innerR;
+            pos[2] = (pos[2] / r) * innerR;
+          } else {
+            pos[0] = (pos[0] / r) * outerR;
+            pos[2] = (pos[2] / r) * outerR;
+          }
+        }
+      }
+    }
+
+    // Solid pillar collision for all Lanterns (radius 0.92m) so player never clips inside a lantern mesh
+    for (const l of this.lanterns) {
+      if (Math.abs(pos[1] - l.pos[1]) <= 3.8) {
+        const dx = pos[0] - l.pos[0];
+        const dz = pos[2] - l.pos[2];
+        const d = Math.hypot(dx, dz);
+        const minR = 0.92;
+        if (d < minR) {
+          if (d < 1e-6) {
+            pos[0] = l.pos[0] + minR;
+          } else {
+            pos[0] = l.pos[0] + (dx / d) * minR;
+            pos[2] = l.pos[2] + (dz / d) * minR;
+          }
+        }
+      }
+    }
+
+    // Solid collision for Ông Đăng NPC at (-2.5, 0, 2.2)
+    if (Math.abs(pos[1]) <= 2.2) {
+      const npcX = -2.5;
+      const npcZ = 2.2;
+      const dx = pos[0] - npcX;
+      const dz = pos[2] - npcZ;
+      const d = Math.hypot(dx, dz);
+      const minR = 0.78;
+      if (d < minR) {
+        if (d < 1e-6) {
+          pos[0] = npcX + minR;
+        } else {
+          pos[0] = npcX + (dx / d) * minR;
+          pos[2] = npcZ + (dz / d) * minR;
+        }
+      }
+    }
+  }
+
   _enforceSafeZonesForShade(shade) {
     const safeR = Number(this.tuning.safe_radius || 6.0);
     let blocked = false;
@@ -420,6 +496,22 @@ export class GameSimulationJS {
 
     const justUnstunned = new Set();
     for (const s of this.shades) {
+      if (s._respawnTicks > 0) {
+        s._respawnTicks--;
+        if (s._respawnTicks === 0) {
+          const pts = this.mapCfg.shade_points;
+          if (pts && pts.length > 0) {
+            const pt = pts[this.rng.randint(0, pts.length - 1)];
+            s.pos = [...pt];
+          }
+          s.state = "wander";
+          s.state_ticks_left = 0;
+          s.drain_ticks = 0;
+          s._combatHp = 3;
+          this._enforceSafeZonesForShade(s);
+        }
+        continue;
+      }
       if ((s.state === "stunned" || s.state === "recoil" || s.state === "spawning") && s.state_ticks_left > 0) {
         s.state_ticks_left--;
         if (s.state_ticks_left === 0) {
@@ -433,11 +525,30 @@ export class GameSimulationJS {
       }
     }
 
+    for (const d of this.drifters) {
+      if (d._respawnTicks > 0) {
+        d._respawnTicks--;
+        if (d._respawnTicks === 0) {
+          const pts = this.mapCfg.shade_points;
+          if (pts && pts.length > 0) {
+            const pt = pts[this.rng.randint(0, pts.length - 1)];
+            d.pos = [...pt];
+          }
+          d.state = "idle";
+          d.stolen = 0;
+          d.has_stolen = false;
+          d.flee_ticks_left = 0;
+          d._combatHp = 3;
+        }
+      }
+    }
+
     for (const l of this.lanterns) {
       if (l.lit) l.fuel_ticks -= 1;
     }
 
     for (const s of this.shades) {
+      if (s._respawnTicks > 0) continue;
       if (s.state === "drain") {
         const tl = this._findDrainingLanternForShade(s);
         if (tl && tl.lit) {
@@ -568,7 +679,7 @@ export class GameSimulationJS {
       this.player.pos[1] += this.player.vel[1] * DT;
       this.player.pos[2] += this.player.vel[2] * DT;
 
-      this._enforceBellTower(this.player.pos);
+      this._enforcePlayerWorldCollisions(this.player.pos);
 
       const floorY = this._computeFloorHeight(this.player.pos[0], this.player.pos[2], oldY);
       if (floorY !== null) {
@@ -760,6 +871,7 @@ export class GameSimulationJS {
     // Step 6: Update safe zones
     const safeR = Number(this.tuning.safe_radius || 6.0);
     for (const s of this.shades) {
+      if (s._respawnTicks > 0) continue;
       if (s.pushout_lantern_id && s.pushout_ticks_left > 0) {
         const l = this.lanterns.find((x) => x.id === s.pushout_lantern_id);
         if (l && this._lanternHasSafeZone(l)) {
@@ -791,6 +903,7 @@ export class GameSimulationJS {
       const stunnedIds = [];
 
       for (const s of this.shades) {
+        if (s._respawnTicks > 0) continue;
         const sCenter = [s.pos[0], s.pos[1] + 0.8, s.pos[2]];
         if (dist3D(pulseCenter, sCenter) <= pulseR + EPS || dist3D(pulseCenter, s.pos) <= pulseR + EPS) {
           const wasDraining = s.state === "drain";
@@ -806,7 +919,7 @@ export class GameSimulationJS {
       }
 
       for (const d of this.drifters) {
-        if (d.state === "removed") continue;
+        if (d.state === "removed" || d._respawnTicks > 0) continue;
         if (distXZ(this.player.pos, d.pos) <= pulseR + EPS) {
           if (d.state === "chase") {
             d.state = "flee";
@@ -827,6 +940,7 @@ export class GameSimulationJS {
     // Step 8: Move Shades & Drifters
     const shadeSpeed = this.mapCfg.shade_speed;
     for (const s of this.shades) {
+      if (s._respawnTicks > 0) continue;
       if (s.push_ticks_left > 0) {
         const stepPush = 4.0 / 15.0;
         s.pos[0] += s.push_dir[0] * stepPush;
@@ -891,12 +1005,28 @@ export class GameSimulationJS {
               s.drain_ticks = 0;
             }
           }
+        } else {
+          const unlitLs = this.lanterns
+            .filter((l) => !l.lit)
+            .sort((a, b) => distXZ(s.pos, a.pos) - distXZ(s.pos, b.pos));
+          if (unlitLs.length > 0) {
+            const targetL = unlitLs[0];
+            s.target_lantern_id = targetL.id;
+            const dL = distXZ(s.pos, targetL.pos);
+            if (dL > 2.0 + EPS) {
+              const moveD = Math.min(dL - 2.0, shadeSpeed * DT);
+              s.pos[0] += ((targetL.pos[0] - s.pos[0]) / dL) * moveD;
+              s.pos[2] += ((targetL.pos[2] - s.pos[2]) / dL) * moveD;
+              this._enforceBellTower(s.pos);
+              this._enforceSafeZonesForShade(s);
+            }
+          }
         }
       }
     }
 
     for (const d of this.drifters) {
-      if (d.state === "removed") continue;
+      if (d.state === "removed" || d._respawnTicks > 0) continue;
       const dP = distXZ(this.player.pos, d.pos);
       if (d.state === "idle" || d.state === "chase") {
         if (this.fall_wait_ticks === 0 && this.player.carried >= 5 && dP <= 15.0 + EPS && !d.has_stolen) {
@@ -930,7 +1060,7 @@ export class GameSimulationJS {
     // Step 9: Collisions
     if (this.fall_wait_ticks === 0) {
       for (const d of this.drifters) {
-        if (d.state === "flee" || d.state === "removed" || d.has_stolen) continue;
+        if (d.state === "flee" || d.state === "removed" || d.has_stolen || d._respawnTicks > 0) continue;
         if (distXZ(this.player.pos, d.pos) <= 1.2 + EPS && this.player.carried > 0) {
           const amount = Math.min(3, this.player.carried);
           this.player.carried -= amount;
@@ -949,7 +1079,14 @@ export class GameSimulationJS {
 
       if (this.invuln_ticks === 0) {
         for (const s of this.shades) {
-          if (s.state === "stunned" || s.state === "recoil" || s.state === "spawning" || s.pushout_ticks_left > 0) continue;
+          if (
+            s._respawnTicks > 0 ||
+            s.state === "stunned" ||
+            s.state === "recoil" ||
+            s.state === "spawning" ||
+            s.pushout_ticks_left > 0
+          )
+            continue;
           if (distXZ(this.player.pos, s.pos) <= 1.0 + EPS && Math.abs(this.player.pos[1] - s.pos[1]) <= 1.5 + EPS) {
             this.player.flames = Math.max(0, this.player.flames - 1);
             const dropped = Math.floor(this.player.carried / 2);
@@ -1063,5 +1200,97 @@ export class GameSimulationJS {
     }
 
     return events;
+  }
+
+  setupBenchmarkScene() {
+    this.player.pos = [0, 0, 0];
+    this.player.vel = [0, 0, 0];
+    this.lanterns.forEach((l, idx) => {
+      if (idx < 3) {
+        l.lit = true;
+        l.ever_lit = true;
+        l.deposited = 10;
+        l.fuel_ticks = 6000;
+      } else {
+        l.lit = false;
+        l.ever_lit = false;
+        l.deposited = 0;
+        l.fuel_ticks = 0;
+      }
+    });
+
+    this.motes = [];
+    this.shades = [];
+    this.drifters = [];
+
+    const goldenAngle = Math.PI * (3.0 - Math.sqrt(5.0));
+    for (let i = 0; i < 100; i++) {
+      const r = 4.0 + 33.5 * Math.sqrt((i + 0.5) / 100.0);
+      const theta = i * goldenAngle + (this.rng.nextFloat() - 0.5) * 0.15;
+      this.motes.push({
+        id: `M${i + 1}`,
+        pos: [r * Math.cos(theta), 0, r * Math.sin(theta)],
+        kind: "initial",
+        ttl_ticks: null,
+      });
+    }
+    this.nextMoteSeq = 101;
+
+    for (let i = 0; i < 200; i++) {
+      const r = 6.0 + 32.0 * Math.sqrt((i + 0.5) / 200.0);
+      const theta = i * goldenAngle + (this.rng.nextFloat() - 0.5) * 0.25;
+      const s = {
+        id: `S${i + 1}`,
+        pos: [r * Math.cos(theta), 0, r * Math.sin(theta)],
+        state: "wander",
+        state_ticks_left: 0,
+        target_lantern_id: null,
+        drain_ticks: 0,
+        push_ticks_left: 0,
+        push_dir: [1, 0],
+        recoil_dir: [0, 1],
+        pushout_lantern_id: null,
+        pushout_ticks_left: 0,
+        wander_angle: this.rng.nextFloat() * 2 * Math.PI,
+      };
+      this._enforceSafeZonesForShade(s);
+      this.shades.push(s);
+    }
+    this.nextShadeSeq = 201;
+  }
+
+  stepBenchmark() {
+    this.sim_tick++;
+    const shadeSpeed = this.mapCfg.shade_speed;
+    const unlitLs = this.lanterns.filter((l) => !l.lit);
+    for (const s of this.shades) {
+      s.state = "wander";
+      if (unlitLs.length > 0) {
+        let targetL = unlitLs[0];
+        let bestD = distXZ(s.pos, targetL.pos);
+        for (let i = 1; i < unlitLs.length; i++) {
+          const d = distXZ(s.pos, unlitLs[i].pos);
+          if (d < bestD) {
+            bestD = d;
+            targetL = unlitLs[i];
+          }
+        }
+        if (bestD > 2.5) {
+          const moveD = Math.min(bestD - 2.0, shadeSpeed * DT);
+          s.pos[0] += ((targetL.pos[0] - s.pos[0]) / bestD) * moveD;
+          s.pos[2] += ((targetL.pos[2] - s.pos[2]) / bestD) * moveD;
+        } else {
+          s.wander_angle = (s.wander_angle || 0) + 1.2 * DT;
+          s.pos[0] += Math.cos(s.wander_angle) * shadeSpeed * DT;
+          s.pos[2] += Math.sin(s.wander_angle) * shadeSpeed * DT;
+        }
+      }
+      this._enforceSafeZonesForShade(s);
+      const rIsland = Math.hypot(s.pos[0], s.pos[2]);
+      if (rIsland > 39.0) {
+        s.pos[0] *= 39.0 / rIsland;
+        s.pos[2] *= 39.0 / rIsland;
+      }
+    }
   }
 }

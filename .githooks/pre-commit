@@ -2,7 +2,7 @@
 set -e
 
 echo "[pre-commit] Running syntax check and Test Contract verification suite..."
-for pyfile in headless.py run_game.py src/sim.py; do
+for pyfile in headless.py run_game.py bench.py soak.py src/sim.py; do
   if [ -f "$pyfile" ]; then
     python3 -m py_compile "$pyfile"
   fi

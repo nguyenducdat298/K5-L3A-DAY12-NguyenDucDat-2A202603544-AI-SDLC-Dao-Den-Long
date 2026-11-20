@@ -1,13 +1,18 @@
-# AGENTS.md — Đảo Đèn Lồng (AI SDLC Harness · Phase 3 · Contract v1.2)
+# AGENTS.md — Đảo Đèn Lồng (AI SDLC Harness · Phase 4 · Release v1.0.0 · Contract v1.3)
 
 Tài liệu hướng dẫn cố định cho AI Agent trong dự án **Đảo Đèn Lồng**. Giữ ngắn gọn để tiết kiệm context token.
 
 ## 1. Lệnh chuẩn của dự án
-- **Build / Kiểm tra cú pháp:** `python3 -m py_compile headless.py run_game.py src/sim.py`
-- **Chạy game 3D (có giao diện 3 Đêm):** `python3 run_game.py`
-- **Chạy chế độ Headless (Test Contract v1.2):**
+- **Build / Kiểm tra cú pháp:** `python3 -m py_compile headless.py run_game.py bench.py soak.py src/sim.py`
+- **Chạy game 3D (có giao diện 3 Đêm & Bảng xếp hạng):** `python3 run_game.py`
+- **Xuất Bảng xếp hạng cục bộ (Top 10):** `python3 run_game.py --export-leaderboard out.json`
+- **Chạy chế độ Headless (Test Contract v1.3):**
   `python3 headless.py --seed <int> --night <1|2|3> [--scenario <file.json>] [--inputs <file.json>] --ticks <int> --out <file.jsonl> [--snapshot-every <int>]`
-- **Chạy toàn bộ bộ kiểm thử tự động:** `python3 -m unittest discover -s tests -v`
+- **Chạy Benchmark chuẩn (200 Bóng Mực, 100 Đom Đóm, L1–L3 fuel 100):**
+  `python3 bench.py --seed 42 --duration 30 --out bench.json`
+- **Chạy Soak Test độ bền (10 Đêm liên tiếp):**
+  `python3 soak.py --seed 7 --nights 10 --out soak.json`
+- **Chạy toàn bộ bộ kiểm thử tự động (26 tests):** `python3 -m unittest discover -s tests -v`
 
 ## 2. Quy tắc kiến trúc bắt buộc (Cập nhật Phase 3 — Contract v1.2)
 1. **Độ chính xác Nhiên liệu Đèn (`fuel_ticks`):**

@@ -1,0 +1,25 @@
+{
+  "entries": [
+    {
+      "name": "May_Keeper",
+      "score": 2840,
+      "nights_won": 3,
+      "achieved_at": "2026-11-20T15:10:00+07:00",
+      "seed": 42
+    },
+    {
+      "name": "Ong_Dang",
+      "score": 2190,
+      "nights_won": 2,
+      "achieved_at": "2026-11-20T15:25:00+07:00",
+      "seed": 108
+    },
+    {
+      "name": "Anh_Sang_1",
+      "score": 1150,
+      "nights_won": 1,
+      "achieved_at": "2026-11-20T15:40:00+07:00",
+      "seed": 7
+    }
+  ]
+}

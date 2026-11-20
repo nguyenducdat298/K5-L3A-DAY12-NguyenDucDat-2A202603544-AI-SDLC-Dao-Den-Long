@@ -1730,3 +1730,101 @@ class GameSimulation:
                 )
 
         return events
+
+    def setup_benchmark_scene(self) -> None:
+        """TICKET-04 Section 1: Standard Night 1 Benchmark Scene.
+        - 200 Shades in wander state, distributed evenly across the island (seed 42).
+        - 100 Motes distributed across the island.
+        - 3 lanterns L1..L3 lit with fuel = 100 (fuel_ticks = 6000); L4, L5 unlit.
+        - Mây stands still at (0, 0, 0).
+        """
+        self.player["pos"] = [0.0, 0.0, 0.0]
+        self.player["vel"] = [0.0, 0.0, 0.0]
+        for idx, l in enumerate(self.lanterns):
+            if idx < 3:
+                l["lit"] = True
+                l["ever_lit"] = True
+                l["deposited"] = 10
+                l["fuel_ticks"] = 6000
+            else:
+                l["lit"] = False
+                l["ever_lit"] = False
+                l["deposited"] = 0
+                l["fuel_ticks"] = 0
+
+        self.motes = []
+        self.shades = []
+        self.drifters = []
+
+        # Spawn 100 motes distributed across Night 1 island (R <= 37.5m)
+        golden_angle = math.pi * (3.0 - math.sqrt(5.0))
+        for i in range(100):
+            r = 4.0 + 33.5 * math.sqrt((i + 0.5) / 100.0)
+            theta = i * golden_angle + (self.rng.next_float() - 0.5) * 0.15
+            mx = round(r * math.cos(theta), 3)
+            mz = round(r * math.sin(theta), 3)
+            self.motes.append(
+                {
+                    "id": f"M{i + 1}",
+                    "pos": [mx, 0.0, mz],
+                    "kind": "initial",
+                    "ttl_ticks": None,
+                }
+            )
+        self.next_mote_seq = 101
+
+        # Spawn 200 shades in wander state distributed evenly across Night 1 island
+        for i in range(200):
+            r = 6.0 + 32.0 * math.sqrt((i + 0.5) / 200.0)
+            theta = i * golden_angle + (self.rng.next_float() - 0.5) * 0.25
+            sx = r * math.cos(theta)
+            sz = r * math.sin(theta)
+            s = {
+                "id": f"S{i + 1}",
+                "pos": [sx, 0.0, sz],
+                "state": "wander",
+                "state_ticks_left": 0,
+                "target_lantern_id": None,
+                "drain_ticks": 0,
+                "push_ticks_left": 0,
+                "push_dir": [1.0, 0.0],
+                "recoil_dir": [0.0, 1.0],
+                "pushout_lantern_id": None,
+                "pushout_ticks_left": 0,
+                "wander_angle": self.rng.next_float() * 2.0 * math.pi,
+            }
+            self._enforce_safe_zones_for_shade(s)
+            self.shades.append(s)
+        self.next_shade_seq = 201
+
+    def step_benchmark(self) -> None:
+        """Advance benchmark scene by 1 tick:
+        - Disabled: entity spawning, damage, mote pickup, fuel decay, night end conditions.
+        - Enabled: all 200 shades move in wander state according to wander rules.
+        """
+        self.sim_tick += 1
+        shade_speed = float(self.map_cfg["shade_speed"])
+        unlit_ls = [l for l in self.lanterns if not l["lit"]]
+        for s in self.shades:
+            s["state"] = "wander"
+            if unlit_ls:
+                unlit_ls.sort(key=lambda l: (dist_xz(s["pos"], l["pos"]), l["id"]))
+                target_l = unlit_ls[0]
+                d_l = dist_xz(s["pos"], target_l["pos"])
+                if d_l > 2.5:
+                    step_d = shade_speed * DT
+                    move_d = min(d_l - 2.0, step_d)
+                    s["pos"][0] += ((target_l["pos"][0] - s["pos"][0]) / d_l) * move_d
+                    s["pos"][2] += ((target_l["pos"][2] - s["pos"][2]) / d_l) * move_d
+                else:
+                    # Orbit / patrol around unlit lantern when already at d_l <= 2.5
+                    ang = float(s.get("wander_angle", 0.0)) + 1.2 * DT
+                    s["wander_angle"] = ang
+                    s["pos"][0] += math.cos(ang) * shade_speed * DT
+                    s["pos"][2] += math.sin(ang) * shade_speed * DT
+            self._enforce_safe_zones_for_shade(s)
+            r_island = math.hypot(s["pos"][0], s["pos"][2])
+            if r_island > 39.0:
+                s["pos"][0] *= 39.0 / r_island
+                s["pos"][2] *= 39.0 / r_island
+

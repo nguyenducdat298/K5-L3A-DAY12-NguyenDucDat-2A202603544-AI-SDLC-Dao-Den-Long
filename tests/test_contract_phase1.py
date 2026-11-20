@@ -29,11 +29,13 @@ class TestContractPhase1(unittest.TestCase):
         self.tuning = self.contract["tuning"]
 
     def test_contract_json_structure(self) -> None:
-        self.assertEqual(self.contract["contract_version"], "1.2")
+        self.assertEqual(self.contract["contract_version"], "1.3")
         self.assertEqual(self.contract["team"], "2A202603544-NguyenDucDat")
         self.assertIn("build_cmd", self.contract)
         self.assertIn("run_cmd", self.contract)
         self.assertIn("headless_cmd", self.contract)
+        self.assertIn("bench_cmd", self.contract)
+        self.assertIn("soak_cmd", self.contract)
         self.assertEqual(self.tuning["lantern_count_night1"], 5)
         for key in (
             "player_speed",

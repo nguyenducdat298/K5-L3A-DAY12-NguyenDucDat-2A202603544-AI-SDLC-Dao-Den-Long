@@ -39,3 +39,16 @@
   - *Hiện tượng:* Khi Bóng Mực hết thời gian choáng (`state_ticks_left == 0`) ở Bước 2 và chuyển về `wander`, ngay trong cùng tick đó ở Bước 8 (chuyển trạng thái) nó lại lập tức xét khoảng cách tới người chơi/đèn yếu và chuyển sang `chase` hoặc `drain`, làm mất trạng thái `wander` tại tick vừa tỉnh.
   - *Cách khắc phục:* Ghi nhận tập `just_unstunned_ids` ở Bước 2 và bỏ qua xét chuyển trạng thái ở Bước 8 trong đúng tick Bóng Mực vừa hết choáng. Sau khi sửa, toàn bộ **22/22 bài test** (Phase 1 + Phase 2 + Phase 3) đạt 100% trong `0.92s`.
 - **Chi phí Token Phase 3:** ~28k tokens (nhờ tái sử dụng kiến trúc tách biệt `src/sim.py` ↔ `web/sim.js` và bộ harness `.githooks/pre-commit`).
+
+---
+
+## 4. Nhật Ký AI — Phase 4 (TICKET-04 — Phát hành `v1.0.0` · Contract v1.3)
+- **Tác vụ thực hiện:**
+  1. Xây dựng `bench.py` (`bench_cmd`) dựng đúng cảnh Đêm 1 chuẩn hóa: 200 Bóng Mực `wander`, 100 Đom Đóm, 3 đèn `L1–L3` sáng với `fuel = 100`, tắt thực thể sáng tạo phụ, camera bay vòng `R = 30m, Y = 15m` ngược chiều kim đồng hồ `15s/vòng`, khởi động `3s` + đo `30s` → tạo `bench.json` (`avg_fps = 116.5`, `p1_low_fps = 64.3`, `load_ms = 4`).
+  2. Xây dựng `soak.py` (`soak_cmd`) chạy liên tiếp 10 Đêm xoay vòng trong cùng tiến trình với input ngẫu nhiên theo seed → tạo `soak.json` (`crashes = 0`, `mem_start_mb = 16.9`, `mem_end_mb = 17.02`).
+  3. Bổ sung Bảng xếp hạng cục bộ (`data/leaderboard.json`, API `/api/leaderboard` và `run_game.py --export-leaderboard`), Accessibility toàn diện (đổi phím 9 hành động + phát hiện trùng phím + khôi phục mặc định, phụ đề + mũi tên chỉ hướng mép màn hình, giảm chuyển động, cỡ chữ `>= 18px` + `×1.25`).
+  4. Sửa bố cục 3 panel HUD trên cùng chống chồng lấn, bổ sung va chạm tường bậc thềm Đêm 3 & trụ đèn (`_enforcePlayerWorldCollisions`), hiệu ứng bắn vỡ Bóng Mực / Gió Lạc và biến mất 10 giây (`600` tick).
+- **Lỗi phát hiện & khắc phục:**
+  - Phát hiện lỗi gọi `self.rng.random()` trên `Mulberry32` khi chạy `bench.py` lần đầu → sửa thành `self.rng.next_float()`.
+  - Phát hiện va chạm xuyên tường bậc thềm Tier 1 (`12 <= r <= 24, z >= 0`) ở Đêm 3 khi người chơi đi bộ ở độ cao `Y = 0` không qua dốc đá → bổ sung `_enforcePlayerWorldCollisions` đẩy người chơi ra mép tường và nâng sàn Tier 1 lên trên 4 cột trụ đá.
+- **Chi phí Token Phase 4:** ~34k tokens (Tổng cộng cả 4 Phase: ~142k tokens). Xem báo cáo tổng kết tại [docs/notes/retro.md](retro.md).

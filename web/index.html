@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Đảo Đèn Lồng — Đèn Cạn Dầu (Phase 3 · Contract v1.2)</title>
+  <title>Đảo Đèn Lồng — Release v1.0.0 (Phase 4 · Contract v1.3)</title>
   <style>
     :root {
+      --ui-scale: 1;
+      --base-font: 18px;
       --night-sky: #0E1430;
       --mist-color: #1B2350;
       --grass-color: #2F5D50;
@@ -26,17 +28,28 @@
       --drifter-color: #8FA3B8;
       --ui-danger: #FF5A5F;
       --ui-text: #F5F1E6;
-      --panel-bg: rgba(14, 20, 48, 0.84);
+      --panel-bg: rgba(14, 20, 48, 0.86);
     }
     body.colorblind-mode {
       --shade-rim: #00B3FF;
       --ui-danger: #FFFFFF;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body.large-text-mode {
+      --ui-scale: 1.25;
+      --base-font: 22.5px;
+      font-size: 22.5px;
+    }
+    body.large-text-mode .modal-box,
+    body.large-text-mode #a11y-caption-box,
+    body.large-text-mode #context-prompt {
+      font-size: 22.5px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; height: 100%; overflow: hidden;
       background: var(--night-sky);
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: var(--base-font);
       color: var(--ui-text);
     }
     #canvas-container {
@@ -147,8 +160,8 @@
       margin-top: 2px;
     }
     #hud-top-center {
-      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-      text-align: center; min-width: 155px;
+      position: fixed; top: 16px; left: 34%; transform: translateX(-50%);
+      text-align: center; min-width: 170px;
     }
     .clock-label {
       font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #b9c2e0;
@@ -168,7 +181,8 @@
     }
     #hud-top-right {
       position: fixed; top: 16px; right: 22px;
-      display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+      max-width: 380px;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
     }
     .top-right-stats {
       display: flex; align-items: center; gap: 18px;
@@ -381,10 +395,74 @@
     }
     .settings-row {
       display: flex; justify-content: space-between; align-items: center;
-      margin: 14px 0; font-size: 14px; font-weight: 700;
+      margin: 10px 0; font-size: calc(18px * var(--ui-scale)); font-weight: 700;
     }
-    .settings-row input[type="range"] { width: 200px; accent-color: var(--gold-border); }
-    .settings-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--gold-border); }
+    .settings-row input[type="range"] { width: 190px; accent-color: var(--gold-border); }
+    .settings-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--gold-border); }
+    #a11y-caption-box {
+      position: fixed; top: 112px; left: 34%; transform: translateX(-50%);
+      background: rgba(14, 20, 48, 0.94);
+      border: 2px solid var(--gold-border);
+      color: var(--ui-text);
+      font-size: calc(18px * var(--ui-scale));
+      font-weight: 800;
+      padding: 8px 22px; border-radius: 999px;
+      z-index: 10; pointer-events: none;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65);
+      text-align: center;
+      white-space: nowrap;
+    }
+    #shade-edge-arrow {
+      position: fixed; left: 50%; top: 50%;
+      width: 52px; height: 52px;
+      margin-left: -26px; margin-top: -26px;
+      z-index: 10; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+      filter: drop-shadow(0 0 10px var(--shade-rim));
+    }
+    .keybind-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px;
+      margin-top: 10px; text-align: left;
+      background: rgba(27, 35, 80, 0.55);
+      padding: 12px; border-radius: 12px;
+      border: 1px solid rgba(242, 193, 78, 0.35);
+    }
+    .kb-item {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: calc(16px * var(--ui-scale)); font-weight: 700;
+    }
+    .kb-btn {
+      cursor: pointer;
+      background: rgba(14, 20, 48, 0.95);
+      border: 1.5px solid var(--gold-border);
+      color: var(--lantern-core);
+      font-size: calc(15px * var(--ui-scale)); font-weight: 800;
+      padding: 4px 12px; border-radius: 8px; min-width: 86px;
+      text-align: center;
+    }
+    .kb-btn.listening {
+      background: var(--ui-danger); color: #0E1430; border-color: #fff;
+    }
+    .lb-table {
+      width: 100%; border-collapse: collapse; margin: 12px 0;
+      font-size: calc(16px * var(--ui-scale));
+    }
+    .lb-table th, .lb-table td {
+      padding: 7px 10px; border-bottom: 1px solid rgba(242, 193, 78, 0.25);
+      text-align: center;
+    }
+    .lb-table th { color: var(--gold-border); font-weight: 900; }
+    .save-score-box {
+      background: rgba(27, 35, 80, 0.72);
+      border: 1.5px solid var(--gold-border);
+      border-radius: 12px; padding: 12px 16px; margin-bottom: 14px;
+    }
+    .save-score-input {
+      background: #0E1430; border: 1.5px solid var(--gold-border);
+      color: var(--ui-text); font-size: calc(18px * var(--ui-scale));
+      padding: 6px 12px; border-radius: 8px; width: 210px;
+      text-align: center; font-weight: 800;
+    }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -408,6 +486,14 @@
       <line x1="30" y1="4" x2="22" y2="12" stroke="#ff4655" stroke-width="3" />
       <line x1="4" y1="30" x2="12" y2="22" stroke="#ff4655" stroke-width="3" />
       <line x1="30" y1="30" x2="22" y2="22" stroke="#ff4655" stroke-width="3" />
+    </svg>
+  </div>
+
+  <!-- Accessibility Visual Subtitles & Screen-Edge Shade Arrow (TICKET-04 Section 4) -->
+  <div id="a11y-caption-box" class="hidden">⚠️ Phụ đề: Bóng Mực xuất hiện!</div>
+  <div id="shade-edge-arrow" class="hidden" title="Hướng Bóng Mực vừa xuất hiện / đang áp sát">
+    <svg width="42" height="42" viewBox="0 0 40 40">
+      <polygon points="20,2 36,35 20,26 4,35" fill="var(--shade-rim)" stroke="#FFFFFF" stroke-width="2.5" />
     </svg>
   </div>
 
@@ -532,7 +618,8 @@
       </div>
       <div>
         <button class="cta-btn" id="btn-start-game">✨ Bắt Đầu Đêm Này (Khóa Chuột FPS)</button>
-        <button class="cta-btn secondary" id="btn-open-settings">⚙ Cài Đặt</button>
+        <button class="cta-btn secondary" id="btn-open-leaderboard">🏆 Bảng Xếp Hạng</button>
+        <button class="cta-btn secondary" id="btn-open-settings">⚙ Cài Đặt & Đổi Phím</button>
       </div>
       <div style="margin-top: 12px; display: flex; justify-content: center; gap: 8px;">
         <button class="anime-btn" data-select-night="1">Chọn Đêm 1 (Đảo Bến)</button>
@@ -556,11 +643,11 @@
     </div>
   </div>
 
-  <!-- 3. Settings Modal (Volume, Mouse Sensitivity & Colorblind Mode persisted in localStorage) -->
+  <!-- 3. Settings & Accessibility Modal (Volume, Sens, Colorblind, Reduced Motion, Large Font x1.25, Key Remapping) -->
   <div class="overlay-modal hidden" id="settings-modal">
-    <div class="modal-box">
-      <div class="modal-ep">CÀI ĐẶT HỆ THỐNG</div>
-      <h2 class="modal-title">ÂM LƯỢNG, ĐỘ NHẠY & HIỂN THỊ</h2>
+    <div class="modal-box" style="max-width: 680px;">
+      <div class="modal-ep">CÀI ĐẶT & DỄ TIẾP CẬN (ACCESSIBILITY · v1.0.0)</div>
+      <h2 class="modal-title" style="font-size: 24px;">ÂM LƯỢNG, HIỂN THỊ & ĐỔI PHÍM</h2>
       <div class="settings-row">
         <span>🔊 Âm lượng (<span id="val-volume">75%</span>)</span>
         <input type="range" id="input-volume" min="0" max="100" value="75" />
@@ -573,13 +660,65 @@
         <span>👁 Bảng màu dễ phân biệt (Chế độ mù màu)</span>
         <input type="checkbox" id="input-colorblind" />
       </div>
-      <div style="margin-top: 20px;">
+      <div class="settings-row">
+        <span>🧘 Giảm chuyển động (Tắt rung camera & chớp màn hình)</span>
+        <input type="checkbox" id="input-reduced-motion" />
+      </div>
+      <div class="settings-row">
+        <span>🔠 Cỡ chữ lớn (×1.25 so với chuẩn ≥18px)</span>
+        <input type="checkbox" id="input-large-text" />
+      </div>
+
+      <div style="margin-top: 10px; text-align: left;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:900; color:var(--gold-border); font-size:16px;">⌨ ĐỔI PHÍM ĐIỀU KHIỂN (Click vào ô để gán phím mới):</span>
+          <button class="anime-btn" id="btn-reset-keys">↺ Khôi phục mặc định</button>
+        </div>
+        <div id="keybind-error-msg" style="color:var(--ui-danger); font-weight:800; font-size:15px; min-height:22px; margin-top:4px;"></div>
+        <div class="keybind-grid" id="keybind-grid">
+          <div class="kb-item"><span>Tiến lên:</span><button class="kb-btn" data-action="move_up">KeyW</button></div>
+          <div class="kb-item"><span>Lùi xuống:</span><button class="kb-btn" data-action="move_down">KeyS</button></div>
+          <div class="kb-item"><span>Sang trái:</span><button class="kb-btn" data-action="move_left">KeyA</button></div>
+          <div class="kb-item"><span>Sang phải:</span><button class="kb-btn" data-action="move_right">KeyD</button></div>
+          <div class="kb-item"><span>Nhảy:</span><button class="kb-btn" data-action="jump">Space</button></div>
+          <div class="kb-item"><span>Lướt Gió:</span><button class="kb-btn" data-action="dash">ShiftLeft</button></div>
+          <div class="kb-item"><span>Tương tác / Đèn:</span><button class="kb-btn" data-action="interact">KeyE</button></div>
+          <div class="kb-item"><span>Tỏa Sáng:</span><button class="kb-btn" data-action="pulse">KeyR</button></div>
+          <div class="kb-item"><span>Tạm dừng:</span><button class="kb-btn" data-action="pause">KeyP</button></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;">
         <button class="cta-btn" id="btn-close-settings">Lưu & Đóng</button>
       </div>
     </div>
   </div>
 
-  <!-- 4. Night Result / Dawn Finale Modal -->
+  <!-- 4. Local Leaderboard Modal (Top 10 persisted on disk) -->
+  <div class="overlay-modal hidden" id="leaderboard-modal">
+    <div class="modal-box" style="max-width: 660px;">
+      <div class="modal-ep">BẢNG XẾP HẠNG CỤC BỘ (TOP 10 NGƯỜI GIỮ ĐÈN)</div>
+      <h2 class="modal-title">🏆 BẢNG XẾP HẠNG</h2>
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tên</th>
+            <th>Tổng Điểm</th>
+            <th>Đêm Thắng</th>
+            <th>Seed</th>
+            <th>Thời Gian</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-tbody"></tbody>
+      </table>
+      <div style="margin-top: 14px;">
+        <button class="cta-btn" id="btn-close-leaderboard">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Night Result / Dawn Finale Modal (with Leaderboard Score Save Form) -->
   <div class="overlay-modal hidden" id="gameover-modal">
     <div class="modal-box">
       <div class="modal-ep" id="go-subtitle">KẾT QUẢ ĐÊM</div>
@@ -588,12 +727,26 @@
         <div class="ong-dang-speaker">🏮 Ông Đăng:</div>
         <div id="go-desc"></div>
       </div>
-      <div style="font-size: 20px; font-weight: 900; color: var(--gold-border); margin-bottom: 18px;">
+      <div style="font-size: 20px; font-weight: 900; color: var(--gold-border); margin-bottom: 14px;">
         Điểm Đêm Này: <span id="go-score">0</span> · Tổng Điểm Chiến Dịch: <span id="go-total-score">0</span>
       </div>
+
+      <!-- Save Score to Local Leaderboard (shown on Dawn Win Night 3 or Lose any Night) -->
+      <div class="save-score-box hidden" id="save-score-box">
+        <div style="font-size: 16px; font-weight: 800; margin-bottom: 8px; color: var(--lantern-core);">
+          🏆 Lưu Điểm Vào Bảng Xếp Hạng Cục Bộ (3–12 ký tự [A-Za-z0-9_]):
+        </div>
+        <div style="display:flex; justify-content:center; gap:8px; align-items:center;">
+          <input type="text" id="input-player-name" class="save-score-input" maxlength="12" placeholder="VD: May_Keeper" value="May_Keeper" />
+          <button class="cta-btn" id="btn-save-score" style="padding: 7px 18px; margin:0;">💾 Lưu Điểm</button>
+        </div>
+        <div id="save-score-msg" style="font-size: 15px; font-weight: 800; margin-top: 6px; min-height: 20px;"></div>
+      </div>
+
       <div>
         <button class="cta-btn" id="btn-next-night">➡ Sang Đêm Kế Tiếp</button>
         <button class="cta-btn secondary" id="btn-play-again">↻ Chơi Lại Đêm Này</button>
+        <button class="cta-btn secondary" id="btn-go-leaderboard">🏆 Xem BXH</button>
       </div>
     </div>
   </div>

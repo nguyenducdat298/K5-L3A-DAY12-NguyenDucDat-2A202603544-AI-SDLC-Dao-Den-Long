@@ -168,7 +168,32 @@ function createLightRifleMesh() {
   return { gun, magGroup, flashMesh, flashMat };
 }
 
-const SETTINGS_KEY = "dao_den_long_settings_v12";
+const SETTINGS_KEY = "dao_den_long_settings_v13";
+const LOCAL_LB_KEY = "dao_den_long_leaderboard_v13";
+
+const DEFAULT_KEYBINDS = {
+  move_up: "KeyW",
+  move_down: "KeyS",
+  move_left: "KeyA",
+  move_right: "KeyD",
+  jump: "Space",
+  dash: "ShiftLeft",
+  interact: "KeyE",
+  pulse: "KeyR",
+  pause: "KeyP",
+};
+
+const ACTION_LABELS = {
+  move_up: "Tiến lên",
+  move_down: "Lùi xuống",
+  move_left: "Sang trái",
+  move_right: "Sang phải",
+  jump: "Nhảy",
+  dash: "Lướt Gió",
+  interact: "Tương tác / Đèn",
+  pulse: "Tỏa Sáng",
+  pause: "Tạm dừng",
+};
 
 function loadSavedSettings() {
   try {
@@ -179,10 +204,20 @@ function loadSavedSettings() {
         volume: Math.max(0, Math.min(100, Number(parsed.volume ?? 75))),
         mouseSens: Math.max(20, Math.min(200, Number(parsed.mouseSens ?? 100))),
         colorblind: Boolean(parsed.colorblind ?? false),
+        reducedMotion: Boolean(parsed.reducedMotion ?? false),
+        largeText: Boolean(parsed.largeText ?? false),
+        keybinds: { ...DEFAULT_KEYBINDS, ...(parsed.keybinds || {}) },
       };
     }
   } catch (_) {}
-  return { volume: 75, mouseSens: 100, colorblind: false };
+  return {
+    volume: 75,
+    mouseSens: 100,
+    colorblind: false,
+    reducedMotion: false,
+    largeText: false,
+    keybinds: { ...DEFAULT_KEYBINDS },
+  };
 }
 
 function saveSettings(settings) {
@@ -197,7 +232,7 @@ async function loadContract() {
     if (res.ok) return await res.json();
   } catch (_) {}
   return {
-    contract_version: "1.2",
+    contract_version: "1.3",
     tuning: {
       player_speed: 6.0,
       dash_speed: 14.0,
@@ -243,16 +278,26 @@ class AnimeThreeIslandsApp {
     this.audio = new CozyAudioEngine(this.settings.volume / 100);
 
     const params = new URLSearchParams(window.location.search);
-    this.currentNight = Number(params.get("night")) || 1;
+    this.benchMode = params.get("bench") === "1";
+    this.benchSeed = Number(params.get("seed")) || 42;
+    this.currentNight = this.benchMode ? 1 : Number(params.get("night")) || 1;
     if (![1, 2, 3].includes(this.currentNight)) this.currentNight = 1;
-    this.firstPerson = params.get("tps") === "1" ? false : true;
+    this.firstPerson = this.benchMode || params.get("tps") === "1" ? false : true;
     if (params.get("cb") === "1") this.settings.colorblind = true;
 
     this.wonNightScores = { 1: 0, 2: 0, 3: 0 };
-    this.sim = new GameSimulationJS(this.tuning, 2026 + this.currentNight, this.currentNight);
+    this.campaignSeed = this.benchMode ? this.benchSeed : 2026 + this.currentNight;
+    this.sim = new GameSimulationJS(this.tuning, this.campaignSeed, this.currentNight);
+    if (this.benchMode) {
+      this.sim.setupBenchmarkScene();
+    }
 
     this.started = false;
     this.botEnabled = false;
+    this.listeningKeyAction = null;
+    this.captionTimer = null;
+    this.lastSpawnedShadeId = null;
+    this.shadeSpawnAlertTicks = 0;
     this.camYawDeg = 0;
     this.fpsPitch = -0.05;
     this.camPitch = 0.44;
@@ -296,7 +341,10 @@ class AnimeThreeIslandsApp {
     this._playIntroAnime();
 
     if (params.get("bot") === "1") this.toggleBot(true);
-    if (params.get("autostart") === "1") this.startGame();
+    if (this.benchMode || params.get("autostart") === "1") {
+      this.started = true;
+      document.getElementById("intro-modal").classList.add("hidden");
+    }
 
     this.lastTime = performance.now();
     this.accumulator = 0;
@@ -768,6 +816,7 @@ class AnimeThreeIslandsApp {
     let bestDist = 32.0;
 
     for (const s of this.sim.shades) {
+      if (s._respawnTicks > 0) continue;
       const toX = s.pos[0] - p.pos[0];
       const toZ = s.pos[2] - p.pos[2];
       const proj = toX * dirX + toZ * dirZ;
@@ -782,7 +831,7 @@ class AnimeThreeIslandsApp {
     }
 
     for (const d of this.sim.drifters) {
-      if (d.state === "removed") continue;
+      if (d.state === "removed" || d._respawnTicks > 0) continue;
       const toX = d.pos[0] - p.pos[0];
       const toZ = d.pos[2] - p.pos[2];
       const proj = toX * dirX + toZ * dirZ;
@@ -814,52 +863,33 @@ class AnimeThreeIslandsApp {
         this.sim._enforceSafeZonesForShade(s);
 
         if (s._combatHp <= 0) {
-          s._combatHp = 3;
-          s.state_ticks_left = 180;
-          s.pos[0] += dirX * 1.65;
-          s.pos[2] += dirZ * 1.65;
-          this.sim._enforceSafeZonesForShade(s);
           this._spawnShatterExplosion(s.pos[0], s.pos[1] + 0.85, s.pos[2], false);
+          s._respawnTicks = 600; // Disappear for 10 seconds (600 ticks at 60Hz)
+          s.drain_ticks = 0;
           const sEntry = this.shadeMeshes.get(s.id);
           if (sEntry) {
-            anime.remove(sEntry.group.scale);
-            anime({
-              targets: sEntry.group.scale,
-              x: [1.45, 0.08, 1.0],
-              y: [1.45, 0.08, 1.0],
-              z: [1.45, 0.08, 1.0],
-              duration: 580,
-              easing: "easeOutElastic(1, .6)",
-            });
+            sEntry.group.visible = false;
           }
+          this._showA11yCaption(`💥 Bóng Mực ${s.id} vỡ tan! Biến mất 10 giây!`, 2400);
         }
       } else {
         const d = t;
         d.pos[0] += dirX * 1.4;
         d.pos[2] += dirZ * 1.4;
         if (d._combatHp <= 0) {
-          d._combatHp = 3;
-          if (d.carrying > 0 && typeof this.sim._dropMotes === "function") {
-            this.sim._dropMotes(d.pos[0], d.pos[2], d.carrying);
+          this._spawnShatterExplosion(d.pos[0], d.pos[1] + 1.25, d.pos[2], true);
+          const dropAmt = d.stolen || d.carrying || 0;
+          if (dropAmt > 0 && typeof this.sim._spawnDroppedMotes === "function") {
+            this.sim._spawnDroppedMotes(d.pos, dropAmt, false);
+            d.stolen = 0;
             d.carrying = 0;
           }
-          d.state = "patrol";
-          d.steal_cd = 240;
-          d.pos[0] += dirX * 2.2;
-          d.pos[2] += dirZ * 2.2;
-          this._spawnShatterExplosion(d.pos[0], d.pos[1] + 1.25, d.pos[2], true);
+          d._respawnTicks = 600; // Disappear for 10 seconds (600 ticks at 60Hz)
           const dEntry = this.drifterMeshes.get(d.id);
           if (dEntry) {
-            anime.remove(dEntry.group.scale);
-            anime({
-              targets: dEntry.group.scale,
-              x: [1.5, 0.05, 1.0],
-              y: [1.5, 0.05, 1.0],
-              z: [1.5, 0.05, 1.0],
-              duration: 620,
-              easing: "easeOutElastic(1, .6)",
-            });
+            dEntry.group.visible = false;
           }
+          this._showA11yCaption(`💥 Ngọn Gió Lạc ${d.id} vỡ tan! Biến mất 10 giây!`, 2400);
         }
       }
 
@@ -1288,11 +1318,19 @@ class AnimeThreeIslandsApp {
       const hole1 = new THREE.Path();
       hole1.absarc(0, 0, 12.0, 0, Math.PI, true);
       shape1.holes.push(hole1);
-      const extrude1 = new THREE.ExtrudeGeometry(shape1, { depth: 3.0, bevelEnabled: false, curveSegments: 36 });
+      const extrude1 = new THREE.ExtrudeGeometry(shape1, { depth: 0.48, bevelEnabled: false, curveSegments: 36 });
       const tier1Mesh = new THREE.Mesh(extrude1, toonMat(PALETTE.GRASS));
       tier1Mesh.rotation.x = Math.PI / 2;
       tier1Mesh.position.y = 3.0;
       this.islandRoot.add(tier1Mesh);
+
+      for (const deg of [25, 65, 115, 155]) {
+        const rad = (deg * Math.PI) / 180.0;
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.78, 2.6, 10), toonMat(PALETTE.WOOD));
+        col.position.set(18.0 * Math.cos(rad), 1.3, 18.0 * Math.sin(rad));
+        addAnimeOutline(col, 1.05);
+        this.islandRoot.add(col);
+      }
 
       const rampLen = Math.hypot(6.0, 3.0);
       const rampSlope = Math.atan2(3.0, 6.0);
@@ -1342,8 +1380,10 @@ class AnimeThreeIslandsApp {
       this.islandRoot.add(padGroup);
     }
 
-    this.islandRoot.add(this._buildOngDangNPC());
-    this._spawnFloorMagazinesForNight(night);
+    if (!this.benchMode) {
+      this.islandRoot.add(this._buildOngDangNPC());
+      this._spawnFloorMagazinesForNight(night);
+    }
 
     // Build HUD fuel chips for lanterns L1..Ln
     const fuelRow = document.getElementById("lantern-fuel-row");
@@ -1687,6 +1727,11 @@ class AnimeThreeIslandsApp {
         entry = this._createShadeMesh(s);
         this.shadeMeshes.set(s.id, entry);
       }
+      if (s._respawnTicks > 0) {
+        entry.group.visible = false;
+        continue;
+      }
+      entry.group.visible = true;
       entry.group.position.set(s.pos[0], s.pos[1], s.pos[2]);
       entry.eyeMat.color.setHex(rimHex);
       entry.outlineMat.color.setHex(rimHex);
@@ -1726,6 +1771,11 @@ class AnimeThreeIslandsApp {
         entry = this._createDrifterMesh(d);
         this.drifterMeshes.set(d.id, entry);
       }
+      if (d._respawnTicks > 0) {
+        entry.group.visible = false;
+        continue;
+      }
+      entry.group.visible = true;
       entry.group.position.set(d.pos[0], d.pos[1], d.pos[2]);
       entry.silk.rotation.y = elapsedSec * 3.5;
       if (entry.hpBarGroup) {
@@ -1752,12 +1802,21 @@ class AnimeThreeIslandsApp {
       entry.card.rotation.y = elapsedSec * 2.5;
     }
 
-    this._updateFloorMagazines(dt, elapsedSec);
+    if (!this.benchMode) {
+      this._updateFloorMagazines(dt, elapsedSec);
+    }
 
     const yawRad = (this.camYawDeg * Math.PI) / 180.0;
-    if (this.firstPerson) {
+    if (this.benchMode) {
+      // TICKET-04 Section 1: Camera orbits around (0,0,0), radius 30m, Y=15m, starting at 0 deg (30,15,0),
+      // counter-clockwise when viewed from above, 15s per revolution.
+      const theta = (2.0 * Math.PI * elapsedSec) / 15.0;
+      this.camera.position.set(30.0 * Math.cos(theta), 15.0, -30.0 * Math.sin(theta));
+      this.camera.lookAt(0, 0, 0);
+      if (this.fpsRifle && this.fpsRifle.gun) this.fpsRifle.gun.visible = false;
+    } else if (this.firstPerson) {
       const speedXZ = Math.hypot(p.vel[0], p.vel[2]);
-      const headBob = speedXZ > 0.25 ? Math.sin(this.walkCyclePhase) * 0.055 : 0;
+      const headBob = !this.settings.reducedMotion && speedXZ > 0.25 ? Math.sin(this.walkCyclePhase) * 0.055 : 0;
       const eyeY = p.pos[1] + 1.52 + headBob;
       this.camera.position.set(p.pos[0], eyeY, p.pos[2]);
       const lookDist = 20.0;
@@ -1802,7 +1861,23 @@ class AnimeThreeIslandsApp {
     if (rem <= 10 && rem > 0 && rem !== this.lastCountdownSec && this.sim.state === "playing") {
       this.lastCountdownSec = rem;
       this.audio.playCountdownTick();
+      this._showA11yCaption(`⏰ Phụ đề: Còn ${rem} giây cuối cùng tới bình minh!`);
     }
+
+    const lowFuelLanterns = this.sim.lanterns.filter((l) => l.lit && l.fuel_ticks < 1800);
+    if (lowFuelLanterns.length > 0 && !this.captionTimer && this.sim.state === "playing") {
+      const ids = lowFuelLanterns.map((l) => l.id).join(", ");
+      const captionEl = document.getElementById("a11y-caption-box");
+      if (captionEl) {
+        captionEl.textContent = `🏮 Phụ đề: Đèn ${ids} có dầu < 30 (Mất vùng an toàn)!`;
+        captionEl.classList.remove("hidden");
+      }
+    } else if (lowFuelLanterns.length === 0 && !this.captionTimer) {
+      const captionEl = document.getElementById("a11y-caption-box");
+      if (captionEl) captionEl.classList.add("hidden");
+    }
+
+    this._updateShadeEdgeArrow();
 
     document.getElementById("lanterns-text").textContent = `${litCount}/${this.sim.lanterns.length}`;
     document.getElementById("score-display").textContent = this.sim.score;
@@ -1846,6 +1921,9 @@ class AnimeThreeIslandsApp {
         const fuelVal = round1(nearLantern.fuel_ticks / 60.0);
         promptEl.textContent = `E — Châm dầu đèn ${nearLantern.id} (Dầu: ${fuelVal}/100)`;
       }
+      promptEl.classList.add("visible");
+    } else if (!this.benchMode && distXZ(p.pos, [-2.5, 0, 2.2]) <= 3.5 && Math.abs(p.pos[1]) <= 2.0) {
+      promptEl.textContent = "🏮 Ông Đăng (NPC Lão Giữ Đèn): Hãy giữ ≥60% đèn sáng tới bình minh!";
       promptEl.classList.add("visible");
     } else {
       promptEl.classList.remove("visible");
@@ -1927,6 +2005,60 @@ class AnimeThreeIslandsApp {
     arrowEl.style.transform = `rotate(${(angle * 180) / Math.PI}deg)`;
   }
 
+  _showA11yCaption(text, durationMs = 2600) {
+    const captionEl = document.getElementById("a11y-caption-box");
+    if (!captionEl) return;
+    captionEl.textContent = text;
+    captionEl.classList.remove("hidden");
+    if (this.captionTimer) clearTimeout(this.captionTimer);
+    this.captionTimer = setTimeout(() => {
+      this.captionTimer = null;
+      captionEl.classList.add("hidden");
+    }, durationMs);
+  }
+
+  _updateShadeEdgeArrow() {
+    const edgeEl = document.getElementById("shade-edge-arrow");
+    if (!edgeEl) return;
+    if (this.benchMode || this.sim.shades.length === 0) {
+      edgeEl.classList.add("hidden");
+      return;
+    }
+    const p = this.sim.player;
+    let targetShade = null;
+    if (this.lastSpawnedShadeId && this.shadeSpawnAlertTicks > 0) {
+      this.shadeSpawnAlertTicks--;
+      targetShade = this.sim.shades.find((s) => s.id === this.lastSpawnedShadeId && !(s._respawnTicks > 0));
+    }
+    if (!targetShade) {
+      const dangerous = this.sim.shades
+        .filter((s) => !(s._respawnTicks > 0) && (s.state === "chase" || s.state === "drain" || distXZ(p.pos, s.pos) <= 15.0))
+        .sort((a, b) => distXZ(p.pos, a.pos) - distXZ(p.pos, b.pos));
+      targetShade = dangerous[0] || null;
+    }
+    if (!targetShade) {
+      edgeEl.classList.add("hidden");
+      return;
+    }
+
+    const worldPos = new THREE.Vector3(targetShade.pos[0], targetShade.pos[1] + 1.0, targetShade.pos[2]);
+    const ndc = worldPos.clone().project(this.camera);
+    const isBehind = ndc.z > 1.0;
+    const nx = isBehind ? -ndc.x : ndc.x;
+    const ny = isBehind ? -ndc.y : ndc.y;
+    const angle = Math.atan2(nx, ny);
+    const margin = 44;
+    const halfW = window.innerWidth / 2 - margin;
+    const halfH = window.innerHeight / 2 - margin;
+    const radius = Math.min(halfW, halfH);
+    const sx = window.innerWidth / 2 + Math.sin(angle) * radius;
+    const sy = window.innerHeight / 2 - Math.cos(angle) * radius;
+    edgeEl.classList.remove("hidden");
+    edgeEl.style.left = `${sx}px`;
+    edgeEl.style.top = `${sy}px`;
+    edgeEl.style.transform = `rotate(${(angle * 180) / Math.PI}deg)`;
+  }
+
   _handleSimEvents(events) {
     for (const ev of events) {
       if (ev.name === "mote_picked") {
@@ -1946,22 +2078,30 @@ class AnimeThreeIslandsApp {
         this._showAnimeBanner(`${prefix}ĐÈN LỒNG ${ev.data.lantern_id} ĐÃ CẠN DẦU!`, "CHỈ CẦN 5 ĐOM ĐÓM ĐỂ THẮP LẠI");
       } else if (ev.name === "pulse") {
         this.audio.playPulse();
-        anime({
-          targets: "#screen-pulse-ring",
-          scale: [0.2, 4.2],
-          opacity: [0.9, 0],
-          duration: 550,
-          easing: "easeOutExpo",
-        });
+        if (!this.settings.reducedMotion) {
+          anime({
+            targets: "#screen-pulse-ring",
+            scale: [0.2, 4.2],
+            opacity: [0.9, 0],
+            duration: 550,
+            easing: "easeOutExpo",
+          });
+        }
       } else if (ev.name === "dash") {
         this.audio.playDash();
-        this._triggerWindDashAnim();
+        if (!this.settings.reducedMotion) {
+          this._triggerWindDashAnim();
+        }
       } else if (ev.name === "jump") {
         this.audio.playJump(Boolean(ev.data && ev.data.pad));
       } else if (ev.name === "shade_spawned") {
         this.audio.playShadeSpawned();
+        this.lastSpawnedShadeId = ev.data.id;
+        this.shadeSpawnAlertTicks = 240;
+        this._showA11yCaption(`⚠️ Phụ đề: Bóng Mực ${ev.data.id} xuất hiện! (Xem mũi tên mép màn hình)`);
       } else if (ev.name === "wind_warning") {
         this.audio.playWindWarning();
+        this._showA11yCaption(`🍃 Phụ đề: Gió mạnh sắp thổi (${Math.round(ev.data.dir_deg)}°)!`);
       } else if (ev.name === "drifter_steal") {
         this.audio.playHit();
         this._showAnimeBanner("GIÓ LẠC CƯỚP ĐOM ĐÓM!", "BẮN QUANG TIỄN HOẶC TỎA SÁNG [R] ĐỂ ĐÁNH RƠI LẠI!");
@@ -2016,6 +2156,18 @@ class AnimeThreeIslandsApp {
     document.getElementById("go-score").textContent = this.sim.score;
     document.getElementById("go-total-score").textContent = totalScore;
 
+    // Show Leaderboard Save Form after winning Night 3 (Bình Minh) OR losing on any Night
+    const saveBox = document.getElementById("save-score-box");
+    const saveMsg = document.getElementById("save-score-msg");
+    if (saveBox) {
+      if ((won && this.currentNight === 3) || !won) {
+        saveBox.classList.remove("hidden");
+        if (saveMsg) saveMsg.textContent = "";
+      } else {
+        saveBox.classList.add("hidden");
+      }
+    }
+
     const nextBtn = document.getElementById("btn-next-night");
     if (won && this.currentNight < 3) {
       document.getElementById("go-subtitle").textContent = `BÌNH MINH ĐÊM ${this.currentNight} (${reason})`;
@@ -2037,6 +2189,102 @@ class AnimeThreeIslandsApp {
       document.getElementById("go-desc").textContent =
         `"Đừng nản lòng cháu Mây! Hãy châm dầu đều cho các Đèn Lồng và thử lại Đêm ${this.currentNight} một lần nữa!"`;
       nextBtn.classList.add("hidden");
+    }
+  }
+
+  async _openLeaderboardModal() {
+    this._unlockCursor();
+    const modal = document.getElementById("leaderboard-modal");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    let entries = [];
+    try {
+      const res = await fetch("/api/leaderboard");
+      if (res.ok) {
+        const data = await res.json();
+        entries = Array.isArray(data.entries) ? data.entries : [];
+        localStorage.setItem(LOCAL_LB_KEY, JSON.stringify(entries));
+      }
+    } catch (_) {
+      try {
+        entries = JSON.parse(localStorage.getItem(LOCAL_LB_KEY) || "[]");
+      } catch (_) {}
+    }
+    this._renderLeaderboardTable(entries);
+  }
+
+  _renderLeaderboardTable(entries) {
+    const tbody = document.getElementById("leaderboard-tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (!entries || entries.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6">Chưa có kỷ lục nào được lưu.</td></tr>`;
+      return;
+    }
+    entries.slice(0, 10).forEach((item, idx) => {
+      const tr = document.createElement("tr");
+      const timeStr = String(item.achieved_at || "").replace("T", " ").slice(0, 19);
+      tr.innerHTML = `
+        <td><b>#${idx + 1}</b></td>
+        <td style="color:var(--lantern-core);font-weight:800;">${item.name}</td>
+        <td style="color:var(--gold-border);font-weight:900;">${item.score}</td>
+        <td>${item.nights_won}/3</td>
+        <td>${item.seed}</td>
+        <td style="font-size:14px;opacity:0.85;">${timeStr}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async _saveScoreToLeaderboard() {
+    const inputEl = document.getElementById("input-player-name");
+    const msgEl = document.getElementById("save-score-msg");
+    if (!inputEl || !msgEl) return;
+    const name = inputEl.value.trim();
+    const nameRegex = /^[A-Za-z0-9_\u00C0-\u1EF9]{3,12}$/;
+    if (!nameRegex.test(name)) {
+      msgEl.style.color = "var(--ui-danger)";
+      msgEl.textContent = "⚠️ Tên không hợp lệ! Cần 3–12 ký tự chữ, số hoặc dấu gạch dưới '_'.";
+      return;
+    }
+
+    const totalScore = this.wonNightScores[1] + this.wonNightScores[2] + this.wonNightScores[3];
+    const nightsWon = [1, 2, 3].filter((n) => this.wonNightScores[n] > 0).length;
+    const payload = {
+      name,
+      score: totalScore,
+      nights_won: nightsWon,
+      seed: this.campaignSeed || 2026 + this.currentNight,
+      achieved_at: new Date().toISOString(),
+    };
+
+    try {
+      const res = await fetch("/api/leaderboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        localStorage.setItem(LOCAL_LB_KEY, JSON.stringify(data.entries || []));
+        msgEl.style.color = "#00ffcc";
+        msgEl.textContent = `✓ Đã lưu kỷ lục của [${name}] (${totalScore} điểm) vào Top 10!`;
+        this._renderLeaderboardTable(data.entries || []);
+        return;
+      }
+      msgEl.style.color = "var(--ui-danger)";
+      msgEl.textContent = data.error || "Không thể lưu điểm.";
+    } catch (_) {
+      let localEntries = [];
+      try {
+        localEntries = JSON.parse(localStorage.getItem(LOCAL_LB_KEY) || "[]");
+      } catch (_) {}
+      localEntries.push(payload);
+      localEntries.sort((a, b) => b.score - a.score || String(a.achieved_at).localeCompare(String(b.achieved_at)));
+      localEntries = localEntries.slice(0, 10);
+      localStorage.setItem(LOCAL_LB_KEY, JSON.stringify(localEntries));
+      msgEl.style.color = "#00ffcc";
+      msgEl.textContent = `✓ Đã lưu kỷ lục cục bộ của [${name}] (${totalScore} điểm)!`;
     }
   }
 
@@ -2159,11 +2407,27 @@ class AnimeThreeIslandsApp {
     document.getElementById("val-sens").textContent = `${(this.settings.mouseSens / 100).toFixed(1)}x`;
     document.getElementById("input-colorblind").checked = Boolean(this.settings.colorblind);
     document.body.classList.toggle("colorblind-mode", Boolean(this.settings.colorblind));
+
+    const rmEl = document.getElementById("input-reduced-motion");
+    if (rmEl) rmEl.checked = Boolean(this.settings.reducedMotion);
+
+    const ltEl = document.getElementById("input-large-text");
+    if (ltEl) ltEl.checked = Boolean(this.settings.largeText);
+    document.body.classList.toggle("large-text-mode", Boolean(this.settings.largeText));
+
     const cbBtn = document.getElementById("btn-colorblind");
     if (cbBtn) {
       cbBtn.textContent = this.settings.colorblind ? "👁 Mù Màu: BẬT" : "👁 Mù Màu: TẮT";
       cbBtn.classList.toggle("active", Boolean(this.settings.colorblind));
     }
+
+    const kb = this.settings.keybinds || DEFAULT_KEYBINDS;
+    document.querySelectorAll(".kb-btn[data-action]").forEach((btn) => {
+      const act = btn.getAttribute("data-action");
+      btn.textContent = kb[act] || DEFAULT_KEYBINDS[act];
+      btn.classList.toggle("listening", this.listeningKeyAction === act);
+    });
+
     this.audio.setVolume(this.settings.volume / 100);
   }
 
@@ -2176,12 +2440,48 @@ class AnimeThreeIslandsApp {
 
     window.addEventListener("keydown", (e) => {
       const code = e.code;
+
+      // Key Remapping Listener with Duplicate Key Detection
+      if (this.listeningKeyAction) {
+        e.preventDefault();
+        const errEl = document.getElementById("keybind-error-msg");
+        if (code === "Escape") {
+          this.listeningKeyAction = null;
+          if (errEl) errEl.textContent = "";
+          this._applySettingsToUI();
+          return;
+        }
+        const kb = this.settings.keybinds || { ...DEFAULT_KEYBINDS };
+        const duplicateAction = Object.keys(kb).find(
+          (act) => act !== this.listeningKeyAction && kb[act] === code
+        );
+        if (duplicateAction) {
+          if (errEl) {
+            errEl.style.color = "var(--ui-danger)";
+            errEl.textContent = `⚠️ Trùng phím! Phím [${code}] đã được gán cho [${ACTION_LABELS[duplicateAction]}]`;
+          }
+          return;
+        }
+        kb[this.listeningKeyAction] = code;
+        this.settings.keybinds = kb;
+        const doneLabel = ACTION_LABELS[this.listeningKeyAction];
+        this.listeningKeyAction = null;
+        saveSettings(this.settings);
+        this._applySettingsToUI();
+        if (errEl) {
+          errEl.style.color = "#00ffcc";
+          errEl.textContent = `✓ Đã gán phím [${code}] cho hành động [${doneLabel}]`;
+        }
+        return;
+      }
+
       this.keys[code] = true;
-      if (code === "Space") this.pendingJump = true;
-      if (code === "KeyE" || code === "KeyF") this.pendingInteract = true;
-      if (code === "KeyR") this.pendingPulse = true;
-      if (code === "ShiftLeft" || code === "ShiftRight") this.pendingDash = true;
-      if (code === "Escape" || code === "KeyP") this.pendingPause = true;
+      const kb = this.settings.keybinds || DEFAULT_KEYBINDS;
+      if (code === kb.jump) this.pendingJump = true;
+      if (code === kb.interact || code === "KeyF") this.pendingInteract = true;
+      if (code === kb.pulse) this.pendingPulse = true;
+      if (code === kb.dash || code === "ShiftRight") this.pendingDash = true;
+      if (code === "Escape" || code === kb.pause) this.pendingPause = true;
       if (code === "KeyV") this.toggleCameraMode();
       if (code === "KeyG") this._reloadRifle();
       if (code === "KeyB") this._shootRifle();
@@ -2198,7 +2498,7 @@ class AnimeThreeIslandsApp {
     const canvas = this.renderer.domElement;
 
     canvas.addEventListener("mousedown", (e) => {
-      if (this.started && this.sim.state === "playing") {
+      if (this.started && this.sim.state === "playing" && !this.benchMode) {
         this._lockCursor();
         if (e.button === 0) {
           this._shootRifle();
@@ -2236,6 +2536,19 @@ class AnimeThreeIslandsApp {
       if (this.currentNight < 3) this.selectNight(this.currentNight + 1, true);
     });
 
+    const lbBtn = document.getElementById("btn-open-leaderboard");
+    if (lbBtn) lbBtn.addEventListener("click", () => this._openLeaderboardModal());
+    const goLbBtn = document.getElementById("btn-go-leaderboard");
+    if (goLbBtn) goLbBtn.addEventListener("click", () => this._openLeaderboardModal());
+    const closeLbBtn = document.getElementById("btn-close-leaderboard");
+    if (closeLbBtn) {
+      closeLbBtn.addEventListener("click", () => {
+        document.getElementById("leaderboard-modal").classList.add("hidden");
+      });
+    }
+    const saveScoreBtn = document.getElementById("btn-save-score");
+    if (saveScoreBtn) saveScoreBtn.addEventListener("click", () => this._saveScoreToLeaderboard());
+
     [1, 2, 3].forEach((n) => {
       document.getElementById(`btn-night-${n}`).addEventListener("click", () => this.selectNight(n, false));
     });
@@ -2258,6 +2571,10 @@ class AnimeThreeIslandsApp {
 
     const openSettings = () => {
       this._unlockCursor();
+      this.listeningKeyAction = null;
+      const errEl = document.getElementById("keybind-error-msg");
+      if (errEl) errEl.textContent = "";
+      this._applySettingsToUI();
       document.getElementById("settings-modal").classList.remove("hidden");
     };
     document.getElementById("btn-open-settings").addEventListener("click", openSettings);
@@ -2277,7 +2594,54 @@ class AnimeThreeIslandsApp {
       this._applySettingsToUI();
       saveSettings(this.settings);
     });
+    const rmInput = document.getElementById("input-reduced-motion");
+    if (rmInput) {
+      rmInput.addEventListener("change", (e) => {
+        this.settings.reducedMotion = Boolean(e.target.checked);
+        this._applySettingsToUI();
+        saveSettings(this.settings);
+      });
+    }
+    const ltInput = document.getElementById("input-large-text");
+    if (ltInput) {
+      ltInput.addEventListener("change", (e) => {
+        this.settings.largeText = Boolean(e.target.checked);
+        this._applySettingsToUI();
+        saveSettings(this.settings);
+      });
+    }
+
+    document.querySelectorAll(".kb-btn[data-action]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const act = e.currentTarget.getAttribute("data-action");
+        this.listeningKeyAction = act;
+        const errEl = document.getElementById("keybind-error-msg");
+        if (errEl) {
+          errEl.style.color = "var(--gold-border)";
+          errEl.textContent = `⌨ Đang chờ phím mới cho [${ACTION_LABELS[act]}]... (Nhấn Esc để hủy)`;
+        }
+        this._applySettingsToUI();
+        e.currentTarget.textContent = "Nhấn phím...";
+      });
+    });
+
+    const resetKeysBtn = document.getElementById("btn-reset-keys");
+    if (resetKeysBtn) {
+      resetKeysBtn.addEventListener("click", () => {
+        this.settings.keybinds = { ...DEFAULT_KEYBINDS };
+        this.listeningKeyAction = null;
+        saveSettings(this.settings);
+        this._applySettingsToUI();
+        const errEl = document.getElementById("keybind-error-msg");
+        if (errEl) {
+          errEl.style.color = "#00ffcc";
+          errEl.textContent = "✓ Đã khôi phục toàn bộ phím điều khiển về mặc định!";
+        }
+      });
+    }
+
     document.getElementById("btn-close-settings").addEventListener("click", () => {
+      this.listeningKeyAction = null;
       saveSettings(this.settings);
       document.getElementById("settings-modal").classList.add("hidden");
     });
@@ -2287,12 +2651,13 @@ class AnimeThreeIslandsApp {
     if (this.keys["KeyQ"]) this.camYawDeg = (this.camYawDeg + 2.2) % 360;
     if (this.keys["KeyC"]) this.camYawDeg = (this.camYawDeg - 2.2) % 360;
 
+    const kb = this.settings.keybinds || DEFAULT_KEYBINDS;
     let mx = 0;
     let mz = 0;
-    if (this.keys["KeyW"] || this.keys["ArrowUp"]) mz += 1;
-    if (this.keys["KeyS"] || this.keys["ArrowDown"]) mz -= 1;
-    if (this.keys["KeyA"] || this.keys["ArrowLeft"]) mx += 1;
-    if (this.keys["KeyD"] || this.keys["ArrowRight"]) mx -= 1;
+    if (this.keys[kb.move_up] || this.keys["ArrowUp"]) mz += 1;
+    if (this.keys[kb.move_down] || this.keys["ArrowDown"]) mz -= 1;
+    if (this.keys[kb.move_left] || this.keys["ArrowLeft"]) mx += 1;
+    if (this.keys[kb.move_right] || this.keys["ArrowRight"]) mx -= 1;
 
     const frame = {
       move: [mx, mz],
@@ -2322,7 +2687,13 @@ class AnimeThreeIslandsApp {
     const dt = Math.min(0.1, (now - this.lastTime) / 1000.0);
     this.lastTime = now;
 
-    if (this.started && (this.sim.state === "playing" || this.sim.state === "paused")) {
+    if (this.benchMode) {
+      this.accumulator += dt;
+      while (this.accumulator >= DT) {
+        this.accumulator -= DT;
+        this.sim.stepBenchmark();
+      }
+    } else if (this.started && (this.sim.state === "playing" || this.sim.state === "paused")) {
       this.accumulator += dt;
       while (this.accumulator >= DT) {
         this.accumulator -= DT;

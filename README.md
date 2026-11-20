@@ -1,97 +1,87 @@
-# Đảo Đèn Lồng — Day 12 AI SDLC (3D Anime Edition · Phase 3 · Contract v1.2)
+# Đảo Đèn Lồng — Day 12 AI SDLC (3D Anime Edition · Release v1.0.0 · Contract v1.3)
 
 > **Học viên:** Nguyễn Đức Đạt · **MSSV:** `2A202603544` · **Lớp:** `L3A`
-> **Phiên bản hiện tại:** `phase-3` (TICKET-03 — Change Request "Đèn cạn dầu" & Test Contract v1.2)
+> **Phiên bản phát hành:** `v1.0.0` (`tag: phase-4` · **Test Contract v1.3**)
 
 Game 3D góc nhìn thứ nhất / thứ ba phong cách **Anime Cel-Shading** (Three.js + Anime.js) qua **3 Đêm (Đảo Bến, Đảo Cau, Đảo Chuông)** kết hợp lõi mô phỏng **60 tick/giây tất định (Deterministic Headless Core)** bằng Python 3 Standard Library.
 
-![Đêm 3 Đảo Chuông](docs/proof/phase3/02_lantern_fuel_bar_and_squashed_unlit.png)
+![Đảo Đèn Lồng v1.0.0](docs/proof/phase4/04_drifter_shatter_and_visual_subtitles.png)
 
 ---
 
-## 1. Cài đặt và Chạy (Tối đa 3 lệnh)
+## 1. Yêu Cầu Hệ Thống & Cài Đặt (Tối đa 3 lệnh)
 
-Dự án **không yêu cầu cài thêm thư viện ngoài** (`0 pip install`, `0 npm install`). Chỉ cần `python3` (có sẵn trên macOS và Linux):
+- **Yêu cầu hệ thống:** `Python >= 3.10` (chỉ dùng Python Standard Library — `0 pip install`, `0 npm install`) và một trình duyệt web hỗ trợ WebGL (Chrome, Firefox, Edge, Safari).
+- **Clone sạch và chạy ngay trong 3 lệnh:**
 
 ```bash
 # 1. Kiểm tra biên dịch / cú pháp (build_cmd)
-python3 -m py_compile headless.py run_game.py src/sim.py
+python3 -m py_compile headless.py run_game.py bench.py soak.py src/sim.py
 
-# 2. Chạy bộ kiểm thử tự động (22 tests: Phase 1 + Phase 2 + Phase 3 Contract v1.2 + Hiệu năng 21.600 tick)
+# 2. Chạy toàn bộ 26 bài kiểm thử tự động (Phase 1 + 2 + 3 + 4 Contract v1.3)
 python3 -m unittest discover -s tests -v
 
 # 3. Mở game 3D trên trình duyệt (run_cmd)
 python3 run_game.py
 ```
 
-### Chạy chế độ Headless (Test Contract v1.2 — Hỗ trợ `--night 1`, `2`, `3`)
+### Các lệnh CLI theo Test Contract v1.3 (`headless`, `bench`, `soak`, `--export-leaderboard`)
 
 ```bash
-python3 headless.py --seed 42 --night 1 --ticks 14400 --out /tmp/night1_p3.jsonl --snapshot-every 60
+# Chạy mô phỏng Headless tất định (JSONL):
+python3 headless.py --seed 42 --night 1 --ticks 14400 --out /tmp/night1.jsonl --snapshot-every 60
+
+# Chạy Benchmark chuẩn (200 Bóng Mực, 100 Đom Đóm, 3 đèn L1-L3 sáng fuel 100, khởi động 3s + đo 30s):
+python3 bench.py --seed 42 --duration 30 --out bench.json
+
+# Chạy Soak Test độ bền 10 Đêm liên tiếp trong cùng tiến trình:
+python3 soak.py --seed 7 --nights 10 --out soak.json
+
+# Xuất Bảng xếp hạng cục bộ Top 10 ra file JSON:
+python3 run_game.py --export-leaderboard out.json
 ```
 
+> **Ghi chú về VSync trong Benchmark:** Trên nền tảng WebGL trình duyệt, tần số quét hiển thị của canvas mặc định gắn với bộ lập lịch khung hình của hệ điều hành (`requestAnimationFrame`). Trình chạy `bench.py` hỗ trợ cờ `--disable-gpu-vsync` khi mở cửa sổ trình duyệt và đo vòng lặp khung hình không khóa trần (`vsync_off: true` trong `bench.json`).
+
 ---
 
-## 2. Điều khiển trong Game 3D (First-Person FPS & Third-Person TPS + Pointer Lock)
+## 2. Điều Khiển Trong Game 3D (Hỗ Trợ Đổi Phím Đầy Đủ Trong Cài Đặt)
 
-| Phím / Thao tác | Chức năng |
+| Phím Mặc Định | Hành Động (Có thể đổi phím trong `⚙ Cài Đặt & Đổi Phím`) |
 |---|---|
-| **Click vào màn hình 3D** | **Khóa con trỏ chuột ở giữa màn hình (`Pointer Lock` / `CursorLockMode.Locked`)** để xoay góc nhìn tự do |
-| `V` hoặc nút `🎥 Góc Nhìn` | Chuyển đổi **First-Person (FPS — Cầm Quang Tiễn)** ↔ **Third-Person (TPS — Xem Mây chạy bộ & Lướt Gió)** |
-| `Chuột Trái` hoặc `B` | **Bắn Quang Tiễn** — tiêu hao 1 viên đạn ánh sáng trong băng (`25` viên/băng), bắn tia sáng 3D làm choáng & đẩy lùi Bóng Mực |
-| `G` | **Thay Hộp Năng Lượng** — hoạt ảnh tháo/lắp băng đạn cong bằng `Anime.js` (nhặt thêm **Hộp Năng Lượng** phát sáng trên sàn đấu `+25` viên) |
-| `W A S D` hoặc `↑ ↓ ← →` | Di chuyển **Mây** (`6.0 m/s`, tăng lên `7.2 m/s` khi có **Bùa Gió**) kèm **Animation chạy bộ (Run Cycle)** |
-| `Space` | Nhảy (`vy = 7.0 m/s`, trọng lực `-20 m/s²`) |
-| `Shift` | **Lướt Gió (`Wind Dash`)** — `14 m/s` trong `0.2s` (`12` tick), xoay người 360° kèm vòng xoáy gió, vệt tàn ảnh (afterimage) & speed-lines |
-| `E` hoặc `F` | **Thắp đèn / Châm thêm dầu (`Refuel`)** vào Đèn Lồng Lớn gần nhất (`<= 2.0m`, thắp đầu `10`, thắp lại `5`, châm dầu `+10 fuel`/đom đóm) |
-| `R` | **Tỏa Sáng (`Pulse`)** — tốn `3` đom đóm, bán kính 3D `5m`, hồi chiêu `3s`, làm choáng Bóng Mực `120` tick & đẩy lùi `4m` (`+15` điểm nếu ngắt Bóng đang hút dầu) |
-| `Esc` hoặc `P` | **Tạm dừng (`Pause`) & Mở khóa chuột** — dừng toàn bộ logic, mở menu Tiếp tục / Chơi lại / Cài đặt (Bảng màu dễ phân biệt) / Về Menu |
-| `Q` / `C` hoặc **Di chuột** | Xoay góc nhìn Camera 3D (`cam_yaw_deg` & `fpsPitch`) |
+| **Click vào màn hình 3D** | **Khóa con trỏ chuột ở giữa màn hình (`Pointer Lock` / `CursorLockMode.Locked`)** để ngắm bắn & xoay camera |
+| `W / S / A / D` | Di chuyển 4 hướng (`Tiến lên`, `Lùi xuống`, `Sang trái`, `Sang phải`) kèm hoạt ảnh chạy bộ |
+| `Space` | **Nhảy** (`vy = 7.0 m/s`, trọng lực `-20 m/s²`) |
+| `Shift` | **Lướt Gió (`Wind Dash`)** — `14 m/s` trong `0.2s` (`12` tick), xoay 360° kèm vòng xoáy gió & tàn ảnh |
+| `E` (hoặc `F`) | **Tương tác / Thắp đèn / Châm dầu (`Refuel`)** vào Đèn Lồng gần nhất (`<= 2.0m`) |
+| `R` | **Tỏa Sáng (`Pulse`)** — tốn `3` đom đóm, bán kính 3D `5m`, làm choáng Bóng Mực `120` tick & đẩy lùi `4m` |
+| `P` (hoặc `Esc`) | **Tạm dừng (`Pause`) & Mở khóa chuột** |
+| `Chuột Trái` hoặc `B` | **Bắn Quang Tiễn** vào **Bóng Mực** hoặc **Ngọn Gió Lạc** (3 phát bắn cạn thanh máu → **vỡ tan thành mảnh tinh thể và biến mất 10 giây**, Gió Lạc rơi lại đom đóm đã cướp) |
+| `G` | **Nạp Đạn (`Reload Animation`)** — hoạt ảnh nghiêng súng, tháo rơi băng đạn cũ và lắp băng đạn ánh sáng mới |
+| `V` | Chuyển đổi góc nhìn **First-Person (FPS)** ↔ **Third-Person (TPS)** |
 
 ---
 
-## 3. Luật Cốt Lõi Mới Phase 3 — "Đèn cạn dầu" (TICKET-03 · Contract v1.2)
+## 3. Tính Năng Nổi Bật Của Bản Phát Hành `v1.0.0` (Phase 1 → Phase 4)
 
-- **Nhiên liệu đèn (`fuel_max = 100`) & Châm dầu (`refuel`):**
-  - Khi vừa thắp (lần đầu hoặc thắp lại), `fuel = 100`. Đèn đang sáng tự hao `1.0 fuel/giây` (`1/60` mỗi tick, lưu chính xác bằng số nguyên `fuel_ticks`).
-  - Bấm `E`/`F` cạnh đèn đang sáng nhưng chưa đầy dầu để châm thêm: `used = min(carried, ceil((100 - fuel) / 10))`, mỗi đom đóm hồi `+10 fuel` (`+5` điểm/đom đóm).
-  - Khi `fuel <= 0`: đèn tắt (`lantern_out`), nhớ `ever_lit = true`. Thắp lại đèn đã từng sáng (`ever_lit`) chỉ tốn **`5` đom đóm** (`+40` điểm, tăng `relit_count`).
-- **Bóng Mực hút dầu (`drain` state):**
-  - Đèn có `fuel < 30` **mất vùng an toàn 6m** (đúng `30.0` vẫn còn vùng an toàn) và nhấp nháy cảnh báo ở tần số `1 Hz`.
-  - Bóng Mực ở trạng thái `wander` ưu tiên tìm đèn đang sáng có `fuel < 30` gần nhất; khi áp sát `<= 2.0m` (XZ) sẽ chuyển sang `drain`, đứng yên hút `5.0 fuel/giây` (`5/60` mỗi tick, cộng dồn nhiều con) và phát sự kiện `fuel_drain` mỗi `60` tick.
-- **Điều kiện Thắng/Thua mới ("Giữ đảo sáng tới bình minh"):**
-  - Thời lượng Đêm rút gọn để giữ nhịp căng thẳng: **Đêm 1: `240s`**, **Đêm 2: `270s`**, **Đêm 3: `300s`**.
-  - Thắp hết đèn **không thắng ngay**. Khi hết giờ (`time_left_s <= 0`), nếu Mây còn sống và số đèn đang sáng `>= ceil(0.6 * tổng_đèn)` (**Đêm 1: `>= 3/5`**, **Đêm 2: `>= 4/6`**, **Đêm 3: `>= 5/7`**) → Thắng (`reason: "dawn_survived"`). Ngược lại → Thua (`reason: "dawn"`).
-- **Sức chứa động (`player.capacity`) & Điểm số v1.2:**
-  - `capacity = min(20, 10 + 2 * số_lần_thắp_thành_công)` (tính cả thắp lần đầu và thắp lại).
-  - Nạp/châm dầu: `+5`/đom đóm · Thắp lần đầu: `+100` · Thắp lại: `+40` · Choáng thường: `+5` · Choáng Bóng đang `drain`: `+15` · Thưởng bình minh: `+50 + floor(fuel)` mỗi đèn sáng + `+50` mỗi lửa sinh mệnh còn lại.
-- **Khả năng tiếp cận — Bảng màu dễ phân biệt (`Colorblind Mode`):**
-  - Bật trong **Cài đặt** (lưu `localStorage`): đổi viền/mắt Bóng Mực sang xanh lam sáng `#00B3FF`, cảnh báo nguy hiểm sang `#FFFFFF` kèm biểu tượng `⚠`, đèn tắt có dáng lùn đi `20%` kèm vết rách giấy để phân biệt bằng hình dạng.
+1. **Ba Hòn Đảo & Luật "Đèn Cạn Dầu — Giữ Đảo Sáng Tới Bình Minh":**
+   - **Đêm 1 — Đảo Bến (`240s`, 5 đèn)** · **Đêm 2 — Đảo Cau (`270s`, 6 đèn, cầu tre, bục nhảy, Gió Lạc, Bùa Gió)** · **Đêm 3 — Đảo Chuông (`300s`, 7 đèn, 3 tầng cao độ, Tháp Chuông, Cơn Gió Mạnh)**.
+   - Đèn sáng tự hao `1.0 fuel/s`; khi `fuel < 30` đèn mất vùng an toàn 6m, nhấp nháy `1 Hz` và bị Bóng Mực áp sát hút dầu (`drain`, `5.0 fuel/s`). Giữ `>= ceil(0.6 * tổng_đèn)` sáng khi bình minh để chiến thắng (`dawn_survived`).
+2. **Dễ Tiếp Cận Toàn Diện (Accessibility):**
+   - **Đổi phím (Key Remapping):** Đổi phím 9 hành động, phát hiện trùng phím, nút `"↺ Khôi phục mặc định"`.
+   - **Phụ đề & Mũi tên chỉ hướng ở mép màn hình:** Cảnh báo trực quan khi Bóng Mực xuất hiện, gió sắp thổi, 10 giây cuối, đèn có `fuel < 30`.
+   - **Bảng màu dễ phân biệt (`Colorblind Mode`)**, **Giảm chuyển động (`Reduced Motion`)**, và **Cỡ chữ UI `>= 18px` + Tùy chọn Chữ lớn (`×1.25`)**.
+3. **Bảng Xếp Hạng Cục Bộ (`data/leaderboard.json`):**
+   - Lưu Top 10 người chơi xuất sắc nhất trên đĩa cục bộ (`name`, `score`, `nights_won`, `achieved_at`, `seed`), xem từ Menu chính hoặc xuất JSON qua `--export-leaderboard`.
 
 ---
 
-## 4. Sáng tạo của tôi (Hạng mục F — Tích hợp đầy đủ qua Phase 1, 2 & 3)
+## 4. Hồ Sơ AI SDLC, Bằng Chứng & Tài Liệu
 
-Toàn bộ phần sáng tạo nằm ở tầng hiển thị/âm thanh `web/`, **không làm thay đổi bất kỳ dòng đầu ra JSONL nào của `headless.py`**:
-
-1. **Chế độ First-Person (FPS) & Quang Tiễn + Khóa Chuột (`Pointer Lock`) + Hộp Năng Lượng trên sàn đấu:**
-   - Click vào màn hình tự động khóa chuột ở tâm ngắm (`requestPointerLock`), hỗ trợ chuyển đổi linh hoạt FPS ↔ TPS bằng phím `[V]`.
-   - Khẩu **Quang Tiễn** 3D có lửa đầu nòng (muzzle flash), đường đạn ánh sáng tracer 3D, hitmarker khi bắn trúng Bóng Mực, hoạt ảnh tháo/lắp băng đạn cong (`[G]`) bằng `Anime.js`, và các **Hộp Năng Lượng** phát sáng trên sàn đấu (`+25` viên đạn dự trữ).
-2. **Model 3D Nhân vật Khớp Xương + Animation Chạy bộ & Lướt Gió (`Wind Dash`):**
-   - Nhân vật 3D phân cấp khớp xương (`torsoPivot`, `headPivot`, `leftArmPivot`, `rightArmPivot`, `leftLegPivot`, `rightLegPivot`, tà áo & đuôi tóc động) với hoạt ảnh chạy bộ so le và cú **Lướt Gió** xoay 360° kèm vòng xoáy gió (`dashWindRing`) + bóng tàn ảnh (afterimage).
-3. **Tinh thể Đom Đóm Đa Diện, Ông Đăng, Đàn Cá Mây & Web Audio API Synthesizer:**
-   - Đom đóm hình tinh thể đa diện kèm vòng quỹ đạo xoay quanh; **Ông Đăng** dẫn truyện ở quảng trường xuất phát; đàn **Cá Mây** bơi dưới Biển Mây; nhạc nền ngũ cung và bộ 14 hiệu ứng âm thanh tổng hợp trực tiếp bằng Web Audio API.
-
-> **Bằng chứng phần lõi không bị ảnh hưởng:** Toàn bộ **22/22 bài test** trong `tests/test_contract_phase1.py`, `tests/test_contract_phase2.py`, `tests/test_contract_phase3.py` đều đạt 100% trong `< 0.7 giây` (xem [docs/proof/phase3/PROOF.md](docs/proof/phase3/PROOF.md)).
-
----
-
-## 5. Hồ sơ AI SDLC, ADR, Changelog & Bằng chứng
-
-- [CHANGELOG.md](CHANGELOG.md) — Danh sách đầy đủ các thay đổi phá vỡ tương thích (`Breaking Changes`) từ `v1.0 → v1.1 → v1.2`.
-- [docs/notes/phase3-adr-and-spec.md](docs/notes/phase3-adr-and-spec.md) — **ADR-03** (Quyết định kiến trúc cho Change Request "Đèn cạn dầu") & tiêu chí nghiệm thu `P3-01..P3-06`.
-- [AGENTS.md](AGENTS.md) — Hướng dẫn cố định cho AI Agent (cập nhật Contract v1.2).
-- [.agents/skills/verify-phase/SKILL.md](.agents/skills/verify-phase/SKILL.md) & [.githooks/pre-commit](.githooks/pre-commit) — Skill kiểm chứng và Git hook tự động.
-- [docs/notes/ai-log.md](docs/notes/ai-log.md) — Nhật ký dùng AI, phân tích lỗi và ước tính token qua cả 3 Phase.
-- [docs/proof/phase1/PROOF.md](docs/proof/phase1/PROOF.md), [docs/proof/phase2/PROOF.md](docs/proof/phase2/PROOF.md) & [docs/proof/phase3/PROOF.md](docs/proof/phase3/PROOF.md) — Bằng chứng thực thi, output JSONL, SHA-256 determinism và ảnh chụp 3D.
+- [docs/notes/retro.md](docs/notes/retro.md) — **Báo cáo Retrospective tổng kết 4 Phase**, phân tích lỗi AI, hiệu quả Harness và chi phí Token.
+- [docs/demo/demo.mp4](docs/demo/demo.mp4) — **Video Demo `.mp4` (< 5 phút)** trình diễn gameplay, benchmark, bảng xếp hạng và accessibility.
+- [bench.json](bench.json) & [soak.json](soak.json) — Kết quả đo Benchmark (`116.5 FPS`) và Soak Test 10 Đêm (`0 crashes`).
+- [CHANGELOG.md](CHANGELOG.md) — Lịch sử thay đổi qua cả 4 Phase (`v1.0 → v1.1 → v1.2 → v1.3`).
+- [docs/notes/phase3-adr-and-spec.md](docs/notes/phase3-adr-and-spec.md) — ADR-03 cho Change Request Phase 3.
+- [docs/proof/phase1/PROOF.md](docs/proof/phase1/PROOF.md), [docs/proof/phase2/PROOF.md](docs/proof/phase2/PROOF.md), [docs/proof/phase3/PROOF.md](docs/proof/phase3/PROOF.md), [docs/proof/phase4/PROOF.md](docs/proof/phase4/PROOF.md) — Bằng chứng thực thi từng Phase.
 - [CREDITS.md](CREDITS.md) & [LICENSE](LICENSE) — Nguồn thư viện mã nguồn mở và giấy phép MIT.

@@ -1,6 +1,32 @@
 # CHANGELOG — Đảo Đèn Lồng
 
-Tài liệu này ghi lại lịch sử phát hành qua các Phase và các **thay đổi phá vỡ tương thích (Breaking Changes)** của yêu cầu khách hàng.
+Tài liệu này ghi lại lịch sử phát hành qua cả 4 Phase (`v1.0 → v1.1 → v1.2 → v1.3 / Release v1.0.0`) và các **thay đổi phá vỡ tương thích (Breaking Changes)** của yêu cầu khách hàng.
+
+---
+
+## [Release v1.0.0 — Phase 4 · Contract v1.3] — TICKET-04 "Phát hành v1.0.0" (`tag: phase-4` & `v1.0.0`)
+
+### 🚀 Tính năng Sản phẩm & Phi chức năng (Non-functional & Release Features)
+1. **Chế độ Benchmark chuẩn hóa (`bench.py` · `bench_cmd`):**
+   - Lệnh: `python3 bench.py --seed 42 --duration 30 --out bench.json` (và cảnh 3D trực tiếp tại `/web/index.html?bench=1&seed=42&duration=30`).
+   - Tải Đêm 1 với đúng **200 Bóng Mực** ở trạng thái `wander`, **100 Đom Đóm**, **3 đèn `L1–L3` sáng với `fuel = 100`**, Mây đứng yên tại `(0,0,0)`, tắt các thực thể sáng tạo phụ và điều kiện kết thúc đêm.
+   - Camera bay vòng tròn tâm `(0,0,0)`, bán kính `30m`, độ cao `Y = 15m`, nhìn vào `(0,0,0)`, ngược chiều kim đồng hồ `15s/vòng`, khởi động `3s` rồi đo `--duration` giây (`avg_fps = 116.5 >= 60`, `p1_low_fps = 64.3 >= 30`, `load_ms = 4 <= 10000`).
+2. **Kiểm thử độ bền Soak Test 10 Đêm liên tiếp (`soak.py` · `soak_cmd`):**
+   - Lệnh: `python3 soak.py --seed 7 --nights 10 --out soak.json`.
+   - Chạy headless 10 Đêm liên tiếp (`Đêm 1 → 2 → 3` xoay vòng) trong cùng một tiến trình với input ngẫu nhiên theo seed (`7 + i`). Đạt `crashes = 0`, `mem_start_mb = 16.9 MB`, `mem_end_mb = 17.02 MB <= 1.2 * mem_start_mb`.
+3. **Bảng xếp hạng cục bộ (`data/leaderboard.json` & `--export-leaderboard`):**
+   - Cho phép nhập tên (`3–12` ký tự `[A-Za-z0-9_]`) sau màn Bình Minh (thắng Đêm 3) hoặc khi thua ở bất kỳ Đêm nào.
+   - Lưu Top 10 trên đĩa cục bộ (`name, score, nights_won, achieved_at, seed`), sắp xếp theo `score` giảm dần, bằng điểm ưu tiên người đạt trước.
+   - Hỗ trợ xem từ Menu chính (`🏆 Bảng Xếp Hạng`) và xuất qua CLI: `python3 run_game.py --export-leaderboard out.json`.
+4. **Dễ tiếp cận toàn diện (Accessibility):**
+   - **Đổi phím (Key Remapping):** Đổi phím cho cả 9 hành động (4 hướng di chuyển, nhảy, lướt, tương tác, tỏa sáng, tạm dừng), tự động phát hiện trùng phím và cảnh báo, có nút `"↺ Khôi phục mặc định"`, lưu bền vững.
+   - **Phụ đề & Chỉ báo hướng:** Phụ đề nổi kết hợp mũi tên chỉ hướng ở mép màn hình khi Bóng Mực xuất hiện, gió sắp thổi, 10 giây cuối và đèn có `fuel < 30`.
+   - **Giảm chuyển động (Reduced Motion):** Tắt rung camera và hiệu ứng chớp màn hình.
+   - **Cỡ chữ UI:** Tối thiểu `18px` ở `1280×720` kèm tùy chọn **Chữ lớn (`×1.25`)**.
+5. **Nâng cấp chiến đấu 3D & Triển khai HTTPS:**
+   - Bắn được cả **Bóng Mực** và **Ngọn Gió Lạc**; có thanh máu 3D, hoạt ảnh tháo/lắp băng đạn (`Anime.js`), hiệu ứng vỡ tan thành mảnh tinh thể và **biến mất 10 giây (`600` tick)** khi quái hoặc Gió Lạc hết máu (Gió Lạc rơi lại đom đóm đã cướp).
+   - Bố cục lại 3 panel HUD trên cùng chống chồng lấn (`non-overlapping`).
+   - Hỗ trợ chạy máy chủ HTTPS trực tiếp (`--host 0.0.0.0 --port 443 --ssl-cert ... --ssl-key ...`).
 
 ---
 
