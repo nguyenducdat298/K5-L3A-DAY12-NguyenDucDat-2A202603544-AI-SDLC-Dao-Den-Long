@@ -1,33 +1,30 @@
-# AGENTS.md — Đảo Đèn Lồng (AI SDLC Harness · Phase 2 · Contract v1.1)
+# AGENTS.md — Đảo Đèn Lồng (AI SDLC Harness · Phase 3 · Contract v1.2)
 
 Tài liệu hướng dẫn cố định cho AI Agent trong dự án **Đảo Đèn Lồng**. Giữ ngắn gọn để tiết kiệm context token.
 
 ## 1. Lệnh chuẩn của dự án
 - **Build / Kiểm tra cú pháp:** `python3 -m py_compile headless.py run_game.py src/sim.py`
 - **Chạy game 3D (có giao diện 3 Đêm):** `python3 run_game.py`
-- **Chạy chế độ Headless (Test Contract v1.1):**
+- **Chạy chế độ Headless (Test Contract v1.2):**
   `python3 headless.py --seed <int> --night <1|2|3> [--scenario <file.json>] [--inputs <file.json>] --ticks <int> --out <file.jsonl> [--snapshot-every <int>]`
 - **Chạy toàn bộ bộ kiểm thử tự động:** `python3 -m unittest discover -s tests -v`
 
-## 2. Quy tắc kiến trúc bắt buộc (Cập nhật Phase 2 — Contract v1.1)
-1. **Tách biệt tuyệt đối Core Logic và 3D View:**
-   - `src/sim.py` và `headless.py` chỉ dùng Python 3 standard library, chạy 21.600 tick (1 Đêm đầy đủ) trong `< 2 giây` (yêu cầu `≤ 30 giây`).
-   - Mọi thông số gameplay chuẩn hóa theo **TICKET-02 Phần 1** và đọc từ `game.contract.json` (`contract_version: "1.1"`).
-2. **Thứ tự xử lý 12 bước cố định trong 1 tick (60 tick/s):**
-   1. Đọc input (`pause` xử lý trước; khi `paused` thì `tick` tăng nhưng `sim_tick` và mọi bộ đếm đứng yên).
-   2. Giảm bộ đếm: thời gian, hồi chiêu (`dash`, `pulse`), bất tử (`invuln`), choáng/lùi (`shade`), bùa (`charm`), TTL đom đóm rơi (`480` tick), hồi bùa (`2700` tick).
-   3. Di chuyển Mây (chạy `6.0`/`7.2` m/s, nhảy `vy=7.0, g=-20`, lướt `14 m/s` trong `12` tick, bục nhảy, gió Đêm 3) và kiểm tra rơi khỏi đảo (`Y < -10`).
-   4. Nhặt đom đóm và Bùa Gió (`XZ <= 1.0 m`, `|dY| <= 1.5 m`).
-   5. Tương tác nạp đèn (`XZ <= 2.0 m`, chi phí `10`, `+10` điểm/đom đóm nạp, `+100` điểm/đèn thắp).
-   6. Cập nhật vùng an toàn (`safe_radius = 6.0 m`, đẩy Bóng Mực bên trong ra mép trong tối đa 30 tick).
-   7. Tỏa Sáng (`pulse`: tốn `3` đom đóm, tâm `chân Mây + 0.8 m`, khoảng cách 3D `<= 5.0 m`, choáng `120` tick, đẩy `4 m` trong `15` tick đầu, `+5` điểm/Bóng Mực; Gió Lạc trúng thì `flee` hoặc thả lại đồ `drifter_drop`).
-   8. Di chuyển Bóng Mực (`spawning`, `wander`, `chase`, `recoil`, `stunned`) và Gió Lạc (`idle`, `chase`, `flee`, `removed`).
-   9. Va chạm: Gió Lạc cướp trước (`XZ <= 1.2 m`, `drifter_steal`), Bóng Mực đánh sau (`XZ <= 1.0 m, |dY| <= 1.5 m`, xét theo ID tăng dần).
-   10. Sinh đom đóm (mỗi `240` tick, trần `30`), Bóng Mực (tick `300 + interval*k`), Gió Lạc (tick `1200, 2400...` ở Đêm 2 & 3) — chỉ tương tác từ tick sau.
-   11. Xét thắng/thua theo thứ tự: `no_flames` → `all_lit` (`+ floor(time_left_s)*2 + 50*flames`) → `dawn`.
-   12. Ghi snapshot nếu `tick % snapshot_every == 0`.
-3. **Quy ước góc bản đồ:** Góc đo từ trục `+X`, ngược chiều kim đồng hồ trên mặt phẳng XZ (`x = r*cos(θ), z = r*sin(θ)`).
+## 2. Quy tắc kiến trúc bắt buộc (Cập nhật Phase 3 — Contract v1.2)
+1. **Độ chính xác Nhiên liệu Đèn (`fuel_ticks`):**
+   - Lưu nhiên liệu đèn bằng số nguyên đơn vị `1/60` (`fuel_ticks`, tối đa `6000` = `100.0` fuel; ngưỡng mất vùng an toàn `< 1800` = `30.0` fuel).
+   - Ở Bước 2 mỗi tick: đèn sáng giảm `1` (tự hao) + `5` cho mỗi Bóng Mực đang `drain` đèn đó. Mỗi `60` tick đang hút phát `fuel_drain {lantern_id, shade_id, fuel}`. Ngay sau Bước 2, nếu `fuel_ticks <= 0` thì tắt đèn, `deposited = 0`, `ever_lit = True`, phát `lantern_out {lantern_id}`.
+2. **Tương tác Đèn, Thắp lại & Châm dầu (Bước 5):**
+   - Chỉ chọn đèn chưa sáng hoặc đang sáng nhưng `fuel_ticks < 6000` trong `2.0 m` (gần nhất, hòa thì ID nhỏ hơn).
+   - Đèn chưa từng sáng cần `10` đom đóm (`+100` điểm, `relight: false`); đèn `ever_lit` chỉ cần `5` đom đóm (`+40` điểm, `relight: true`, `relit_count += 1`). Mỗi lần thắp thành công trong Đêm tăng `successful_lights += 1` → `capacity = min(20, 10 + 2 * successful_lights)`.
+   - Đèn đang sáng (`fuel < 100`): châm `used = min(carried, ceil((100 - fuel)/10))`, phát `refuel {lantern_id, amount, fuel}`. Nếu châm lên `>= 30` đẩy Bóng Mực trong `6 m` ra mép trong tối đa `30` tick.
+   - Mỗi đom đóm nạp vào đèn (thắp mới, thắp lại, châm dầu) cộng **`+5` điểm**.
+3. **Bóng Mực Hút Dầu (`drain`) & Tỏa Sáng:**
+   - Bóng Mực ở `wander` ưu tiên đi tới đèn sáng có `fuel < 30` gần nhất (không có mới đi tới đèn tắt gần nhất); vào `<= 2.0 m` chuyển sang `drain`.
+   - Trúng `pulse` khi đang `drain` cộng **`+15` điểm** (trạng thái khác cộng **`+5` điểm**). Hết `stunned` luôn về `wander`.
+4. **Luật Thắng/Thua Mới (Bước 11):**
+   - Không còn thắng sớm `all_lit`. Hết Ngọn Lửa luôn thua `no_flames` trước.
+   - Khi hết giờ (`240 / 270 / 300 s`): nếu số đèn sáng `>= ceil(0.6 * tổng_đèn)` → thắng `dawn_survived` (thưởng `50 + floor(fuel)` mỗi đèn sáng + `50 * flames`); ngược lại → thua `dawn`.
 
 ## 3. Quy tắc kiểm chứng & Git
 - Chạy `python3 -m unittest discover -s tests` trước mọi commit (cưỡng chế bởi `.githooks/pre-commit`).
-- Khi yêu cầu Phase 2 thay đổi thông số Phase 1, cập nhật test cũ kèm chú thích rõ lý do trong code và tài liệu.
+- Khi luật mới thay thế luật cũ, cập nhật test cũ kèm ghi chú rõ lý do và ghi vào `CHANGELOG.md`.
