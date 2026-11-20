@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Headless CLI runner for Đảo Đèn Lồng (Phase 1 - Test Contract v1.0).
+"""Headless CLI runner for Đảo Đèn Lồng (Phase 2 - Test Contract v1.1).
 
 Usage:
-  python3 headless.py --seed <int> --night 1 [--scenario <file.json>] [--inputs <file.json>] \
+  python3 headless.py --seed <int> --night <1|2|3> [--scenario <file.json>] [--inputs <file.json>] \
       --ticks <int> --out <file.jsonl> [--snapshot-every <int, default 10>]
 """
 
@@ -37,11 +37,11 @@ def load_json_file(path_str: str, label: str) -> Any:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Đảo Đèn Lồng Headless Simulator (Test Contract v1.0)",
+        description="Đảo Đèn Lồng Headless Simulator (Test Contract v1.1)",
         allow_abbrev=False,
     )
     parser.add_argument("--seed", type=int, default=1, help="Random seed (integer)")
-    parser.add_argument("--night", type=int, default=1, help="Night number (1 for Phase 1)")
+    parser.add_argument("--night", type=int, default=1, help="Night number (1, 2, or 3)")
     parser.add_argument("--scenario", type=str, default=None, help="Path to scenario JSON file")
     parser.add_argument("--inputs", type=str, default=None, help="Path to inputs JSON file")
     parser.add_argument("--ticks", type=int, required=True, help="Maximum ticks to simulate")
@@ -69,8 +69,8 @@ def run_headless(argv: list[str] | None = None) -> int:
     if args.snapshot_every <= 0:
         print("Error: --snapshot-every must be >= 1", file=sys.stderr)
         return 1
-    if args.night != 1:
-        print(f"Error: Unsupported --night {args.night} in Phase 1", file=sys.stderr)
+    if args.night not in (1, 2, 3):
+        print(f"Error: Unsupported --night {args.night} (must be 1, 2, or 3)", file=sys.stderr)
         return 1
 
     try:
@@ -107,15 +107,16 @@ def run_headless(argv: list[str] | None = None) -> int:
             f.write(json.dumps(sim.get_snapshot(), separators=(",", ":")) + "\n")
 
             for k in range(args.ticks):
-                if sim.state != "playing":
+                if sim.state in ("won", "lost"):
                     break
                 frame_delta = frames_by_tick.get(k)
                 events = sim.step(frame_delta)
                 for ev in events:
                     f.write(json.dumps(ev, separators=(",", ":")) + "\n")
+                # Step 12: Emit snapshot if on schedule
                 if sim.tick % args.snapshot_every == 0:
                     f.write(json.dumps(sim.get_snapshot(), separators=(",", ":")) + "\n")
-                if sim.state != "playing":
+                if sim.state in ("won", "lost"):
                     break
 
             end_record = {
