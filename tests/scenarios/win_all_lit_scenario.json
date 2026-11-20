@@ -6,10 +6,10 @@
   "shades": [],
   "lanterns": [
     { "id": "L1", "pos": [0, 0, 12], "deposited": 7, "lit": false },
-    { "id": "L2", "pos": [23.8, 0, 7.7], "deposited": 10, "lit": true },
-    { "id": "L3", "pos": [14.7, 0, -20.2], "deposited": 10, "lit": true },
-    { "id": "L4", "pos": [-14.7, 0, -20.2], "deposited": 10, "lit": true },
-    { "id": "L5", "pos": [-23.8, 0, 7.7], "deposited": 10, "lit": true }
+    { "id": "L2", "pos": [23.8, 0, 7.7], "deposited": 10, "lit": true, "fuel": 80 },
+    { "id": "L3", "pos": [14.7, 0, -20.2], "deposited": 10, "lit": true, "fuel": 80 },
+    { "id": "L4", "pos": [-14.7, 0, -20.2], "deposited": 10, "lit": true, "fuel": 80 },
+    { "id": "L5", "pos": [-23.8, 0, 7.7], "deposited": 10, "lit": true, "fuel": 80 }
   ],
-  "time_left_s": 300
+  "time_left_s": 2.05
 }

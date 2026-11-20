@@ -1,8 +1,9 @@
-"""Automated Regression Test Suite for Phase 1 Core Behaviors under Contract v1.1 Standardized Numbers.
+"""Automated Regression Test Suite for Phase 1 Core Behaviors under Contract v1.2.
 
-Note on Phase 2 updates (see docs/notes/phase2-spec-and-assumptions.md):
-- contract_version updated from "1.0" to "1.1" per Ticket-02 Part 4.
-- pulse knockback (4.0m) occurs over 15 ticks (Part 1), so snapshot check for safe_radius clamping is checked at tick >= 15.
+Note on Phase 3 (TICKET-03) breaking changes (see CHANGELOG.md & docs/notes/phase3-adr-and-spec.md):
+- contract_version updated to "1.2"; night1_duration_s updated from 300s to 240s.
+- [REPLACED] "all_lit" early win replaced by "dawn_survived" at time_left_s == 0 with >= ceil(0.6 * N) lit lanterns.
+  In win_all_lit_scenario.json, we set time_left_s to 2.05s (123 ticks) so lighting L1 at tick 121 is followed by dawn_survived win at tick 123.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ class TestContractPhase1(unittest.TestCase):
         self.tuning = self.contract["tuning"]
 
     def test_contract_json_structure(self) -> None:
-        self.assertEqual(self.contract["contract_version"], "1.1")
+        self.assertEqual(self.contract["contract_version"], "1.2")
         self.assertEqual(self.contract["team"], "2A202603544-NguyenDucDat")
         self.assertIn("build_cmd", self.contract)
         self.assertIn("run_cmd", self.contract)
@@ -40,7 +41,15 @@ class TestContractPhase1(unittest.TestCase):
             "dash_duration_s",
             "dash_cooldown_s",
             "carry_capacity",
+            "capacity_max",
             "lantern_cost",
+            "relight_cost",
+            "fuel_max",
+            "fuel_decay_per_s",
+            "fuel_per_mote",
+            "low_fuel_threshold",
+            "drain_per_s",
+            "win_ratio",
             "pickup_radius",
             "interact_radius",
             "pulse_cost",
@@ -68,16 +77,15 @@ class TestContractPhase1(unittest.TestCase):
             seed=1,
             scenario={"random_motes": False, "random_shades": False, "motes": [], "shades": []},
         )
-        # Move along +Z for 120 ticks at 6.0 m/s -> z = 12.0
+        # Move along +Z for 120 ticks at 6.0 m/s -> z = 12.0; night1_duration_s=240 -> time_left_s=238.0
         sim.step({"move": [0, 1], "cam_yaw_deg": 0})
         for _ in range(119):
             sim.step()
         snap = sim.get_snapshot()
         self.assertEqual(snap["tick"], 120)
-        self.assertEqual(snap["time_left_s"], 298.0)
+        self.assertEqual(snap["time_left_s"], 238.0)
         self.assertEqual(snap["player"]["pos"], [0.0, 0.0, 12.0])
 
-        # cam_yaw_deg=90 rotates +Z to +X
         sim2 = GameSimulation(
             self.tuning,
             seed=1,
@@ -89,7 +97,8 @@ class TestContractPhase1(unittest.TestCase):
         snap2 = sim2.get_snapshot()
         self.assertEqual(snap2["player"]["pos"], [6.0, 0.0, 0.0])
 
-    def test_win_all_lit_scenario_cli(self) -> None:
+    def test_win_dawn_survived_scenario_cli(self) -> None:
+        """Updated from Phase 1 test_win_all_lit_scenario_cli due to Ticket-03 replacing all_lit with dawn_survived."""
         with tempfile.TemporaryDirectory() as tmp:
             out_file = pathlib.Path(tmp) / "win.jsonl"
             rc = run_headless(
@@ -116,7 +125,6 @@ class TestContractPhase1(unittest.TestCase):
             self.assertEqual(lines[0]["tick"], 0)
             self.assertEqual(lines[-1]["type"], "end")
             self.assertEqual(lines[-1]["state"], "won")
-            self.assertEqual(lines[-1]["ticks"], 121)
 
             events = [r for r in lines if r["type"] == "event"]
             event_names = [e["name"] for e in events]
@@ -124,9 +132,10 @@ class TestContractPhase1(unittest.TestCase):
                 event_names,
                 ["mote_picked", "mote_picked", "mote_picked", "deposit", "lantern_lit", "game_over"],
             )
+            lit_ev = next(e for e in events if e["name"] == "lantern_lit")
+            self.assertEqual(lit_ev["data"], {"lantern_id": "L1", "relight": False})
             go_ev = events[-1]
-            self.assertEqual(go_ev["data"], {"result": "won", "reason": "all_lit"})
-            self.assertEqual(go_ev["tick"], 121)
+            self.assertEqual(go_ev["data"], {"result": "won", "reason": "dawn_survived"})
 
     def test_pulse_stun_push_and_safe_radius(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -156,7 +165,6 @@ class TestContractPhase1(unittest.TestCase):
             self.assertEqual(pulse_events[0]["tick"], 1)
             self.assertEqual(pulse_events[0]["data"], {"stunned_ids": ["S1"]})
 
-            # In v1.1, pulse pushes 4.0m over the first 15 ticks; L1 at z=11 has safe_radius=6.0 (edge z=5.0)
             snap20 = next(r for r in lines if r["type"] == "snapshot" and r["tick"] == 20)
             self.assertEqual(snap20["shades"][0]["state"], "stunned")
             self.assertAlmostEqual(snap20["shades"][0]["pos"][2], 5.0, places=3)
