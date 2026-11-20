@@ -1,0 +1,28 @@
+test_contract_json_structure (test_contract_phase1.TestContractPhase1.test_contract_json_structure) ... ok
+test_determinism_identical_sha256 (test_contract_phase1.TestContractPhase1.test_determinism_identical_sha256) ... ok
+test_invalid_inputs_or_scenario_returns_exit_code_2 (test_contract_phase1.TestContractPhase1.test_invalid_inputs_or_scenario_returns_exit_code_2) ... ok
+test_lose_dawn (test_contract_phase1.TestContractPhase1.test_lose_dawn) ... ok
+test_lose_no_flames_and_hit_drop (test_contract_phase1.TestContractPhase1.test_lose_no_flames_and_hit_drop) ... ok
+test_movement_and_cam_yaw_rotation (test_contract_phase1.TestContractPhase1.test_movement_and_cam_yaw_rotation) ... ok
+test_pulse_stun_push_and_safe_radius (test_contract_phase1.TestContractPhase1.test_pulse_stun_push_and_safe_radius) ... ok
+test_win_dawn_survived_scenario_cli (test_contract_phase1.TestContractPhase1.test_win_dawn_survived_scenario_cli)
+Updated from Phase 1 test_win_all_lit_scenario_cli due to Ticket-03 replacing all_lit with dawn_survived. ... ok
+test_dash_mechanic_cli (test_contract_phase2.TestContractPhase2.test_dash_mechanic_cli) ... ok
+test_drifter_steal_and_pulse_drop_cli (test_contract_phase2.TestContractPhase2.test_drifter_steal_and_pulse_drop_cli) ... ok
+test_fall_off_island_and_respawn (test_contract_phase2.TestContractPhase2.test_fall_off_island_and_respawn) ... ok
+test_headless_21600_ticks_performance (test_contract_phase2.TestContractPhase2.test_headless_21600_ticks_performance) ... ok
+test_night1_standardized_map_and_spawns (test_contract_phase2.TestContractPhase2.test_night1_standardized_map_and_spawns) ... ok
+test_night2_charm_and_jumppad (test_contract_phase2.TestContractPhase2.test_night2_charm_and_jumppad) ... ok
+test_night3_tiers_ramps_jumppad_and_wind (test_contract_phase2.TestContractPhase2.test_night3_tiers_ramps_jumppad_and_wind) ... ok
+test_pause_and_resume_freezes_sim_tick (test_contract_phase2.TestContractPhase2.test_pause_and_resume_freezes_sim_tick) ... ok
+test_shade_hit_dropped_motes_and_recoil (test_contract_phase2.TestContractPhase2.test_shade_hit_dropped_motes_and_recoil) ... ok
+test_dawn_survived_win_and_no_early_win (test_contract_phase3.TestContractPhase3.test_dawn_survived_win_and_no_early_win) ... ok
+test_dynamic_capacity_progression (test_contract_phase3.TestContractPhase3.test_dynamic_capacity_progression) ... ok
+test_lantern_fuel_decay_out_and_relight (test_contract_phase3.TestContractPhase3.test_lantern_fuel_decay_out_and_relight) ... ok
+test_refuel_and_safe_zone_restoration (test_contract_phase3.TestContractPhase3.test_refuel_and_safe_zone_restoration) ... ok
+test_shade_drain_and_pulse_bonus_15 (test_contract_phase3.TestContractPhase3.test_shade_drain_and_pulse_bonus_15) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.923s
+
+OK

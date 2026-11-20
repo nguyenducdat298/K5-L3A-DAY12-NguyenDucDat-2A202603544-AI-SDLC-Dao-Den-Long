@@ -1,9 +1,9 @@
 import * as THREE from "/web/vendor/three.module.min.js";
 import anime from "/web/vendor/anime.es.js";
-import { GameSimulationJS, DT, distXZ } from "/web/sim.js";
+import { GameSimulationJS, DT, distXZ, round1 } from "/web/sim.js";
 import { CozyAudioEngine } from "/web/audio.js";
 
-// --- Standardized Color Palette (TICKET-02 Part 3) + HSR Memoria & Valorant Vandal Accents ---
+// --- Standardized Color Palette (TICKET-02 Part 3 & TICKET-03 Part 6 Colorblind Support) ---
 const PALETTE = {
   NIGHT_SKY: 0x0e1430,
   MIST: 0x1b2350,
@@ -16,10 +16,11 @@ const PALETTE = {
   LANTERN_OFF: 0x5b5f6e,
   MOTE_CORE: 0xfff6c2,
   MOTE_HALO: 0xffe58a,
-  MEMORIA_CYAN: 0x7df9ff,
-  MEMORIA_VIOLET: 0xb86bff,
+  CRYSTAL_CYAN: 0x7df9ff,
+  CRYSTAL_VIOLET: 0xb86bff,
   SHADE_BODY: 0x120a1a,
   SHADE_RIM: 0x7a3cff,
+  SHADE_RIM_CB: 0x00b3ff,
   SHADE_STUN: 0x3a3450,
   MAY_ROBE: 0xe8e2d0,
   MAY_SCARF: 0xc8102e,
@@ -33,17 +34,17 @@ const NIGHT_STORIES = {
   1: {
     title: "ĐÊM 1 — ĐẢO BẾN",
     quote:
-      '"Chào <b>Evernight</b>! Đêm nay sương đen đã phủ kín cả ba hòn đảo. Hãy cầm chắc khẩu <b>Vandal</b> ở góc nhìn thứ nhất (hoặc bấm <b>[V]</b> để xem animation chạy bộ & <b>Lướt Genshin [Shift]</b>), nhặt thêm <b>Băng Đạn</b> trên sàn đấu và thu thập đủ 10 viên <b>Memoria</b> cho mỗi Đèn Lồng Lớn nhé!"',
+      '"Cháu <b>Mây</b> ơi, gió đêm nay làm đèn hao dầu liên tục (1 dầu/giây) và lũ Bóng Mực đang tìm cách hút cạn những ngọn đèn yếu (<b>dầu &lt; 30</b>)! Hãy dùng <b>Quang Tiễn</b> ở góc nhìn thứ nhất (hoặc bấm <b>[V]</b> để xem chuyển động chạy bộ & <b>Lướt Gió [Shift]</b>), châm thêm dầu cho đèn và <b>giữ ít nhất 3/5 đèn sáng tới bình minh</b> nhé!"',
   },
   2: {
     title: "ĐÊM 2 — ĐẢO CAU",
     quote:
-      '"Phía trước là <b>Đảo Cau</b> gồm hai hòn đảo nối bằng cầu tre và hai <b>Bục Nhảy</b> cổ ngữ. Hãy dùng súng <b>Vandal</b> bắn hạ hoặc dùng <b>Tỏa Sáng [R]</b> để đánh rơi <b>Memoria</b> từ <b>Gió Lạc</b>, và nhặt <b>Bùa Gió</b> giữa cầu để kích hoạt Lướt Genshin liên hoàn không hồi chiêu!"',
+      '"Phía trước là <b>Đảo Cau</b> gồm hai hòn đảo nối bằng cầu tre và hai <b>Bục Nhảy</b> cổ ngữ. Đèn đã từng sáng nếu bị tắt chỉ cần <b>5 đom đóm</b> để thắp lại, và mỗi lần thắp đèn sức chứa của cháu sẽ tăng thêm +2 (tối đa 20)! Hãy giữ ít nhất <b>4/6 đèn sáng tới bình minh</b>!"',
   },
   3: {
     title: "ĐÊM 3 — ĐẢO CHUÔNG",
     quote:
-      '"Đêm cuối tại <b>Đảo Chuông</b> 3 tầng! Hãy leo theo hai con dốc đá (30° và 150°) lên tầng 1, nhặt các <b>Băng Đạn Vandal</b> dọc đường và dẫm lên Bục Nhảy để bay lên đỉnh <b>Tháp Chuông</b> tầng 2 trước khi <b>Gió Mạnh</b> thổi qua!"',
+      '"Đêm cuối tại <b>Đảo Chuông</b> 3 tầng! Hãy leo theo hai con dốc đá (30° và 150°) lên tầng 1, nhặt các <b>Băng Đạn Ánh Sáng</b> dọc đường và dẫm lên Bục Nhảy để bay lên đỉnh <b>Tháp Chuông</b> tầng 2. Hãy giữ ít nhất <b>5/7 đèn sáng khi bình minh lên</b>!"',
   },
 };
 
@@ -87,23 +88,20 @@ function addAnimeOutline(mesh, scale = 1.06, color = 0x0e1430) {
   return outline;
 }
 
-// Build a detailed 3D Valorant Vandal Rifle Mesh (Reaver / Prime Gold-Crimson Skin)
-function createVandalRifleMesh() {
+// Build a detailed 3D Light Rifle Mesh (Quang Tiễn) with Detachable Magazine & Muzzle Flash
+function createLightRifleMesh() {
   const gun = new THREE.Group();
 
-  // Main Receiver
   const recGeo = new THREE.BoxGeometry(0.11, 0.16, 0.62);
   const recMesh = new THREE.Mesh(recGeo, toonMat(0x1b1e2b));
   addAnimeOutline(recMesh, 1.06, PALETTE.GOLD_BORDER);
   gun.add(recMesh);
 
-  // Gold & Crimson Trim Strip along top rail
   const railGeo = new THREE.BoxGeometry(0.07, 0.035, 0.56);
   const railMesh = new THREE.Mesh(railGeo, new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER }));
   railMesh.position.set(0, 0.095, 0.02);
   gun.add(railMesh);
 
-  // Holographic Sight
   const sightGeo = new THREE.BoxGeometry(0.08, 0.09, 0.12);
   const sightMesh = new THREE.Mesh(sightGeo, toonMat(0x282d40));
   sightMesh.position.set(0, 0.14, -0.05);
@@ -114,7 +112,6 @@ function createVandalRifleMesh() {
   reticleMesh.position.set(0, 0.15, -0.05);
   gun.add(reticleMesh);
 
-  // Long Rifled Barrel & Muzzle Brake
   const barrelGeo = new THREE.CylinderGeometry(0.026, 0.028, 0.48, 10);
   const barrelMesh = new THREE.Mesh(barrelGeo, toonMat(0x353b4f));
   barrelMesh.rotation.x = Math.PI / 2;
@@ -127,30 +124,26 @@ function createVandalRifleMesh() {
   muzzleMesh.position.set(0, 0.03, 0.78);
   gun.add(muzzleMesh);
 
-  // Handguard
   const guardGeo = new THREE.BoxGeometry(0.095, 0.11, 0.34);
   const guardMesh = new THREE.Mesh(guardGeo, toonMat(PALETTE.MAY_SCARF));
   guardMesh.position.set(0, 0.01, 0.42);
   addAnimeOutline(guardMesh, 1.05, PALETTE.GOLD_BORDER);
   gun.add(guardMesh);
 
-  // Tactical Stock
   const stockGeo = new THREE.BoxGeometry(0.09, 0.17, 0.32);
   const stockMesh = new THREE.Mesh(stockGeo, toonMat(0x171924));
   stockMesh.position.set(0, -0.03, -0.44);
   gun.add(stockMesh);
 
-  // Pistol Grip
   const gripGeo = new THREE.BoxGeometry(0.075, 0.22, 0.1);
   const gripMesh = new THREE.Mesh(gripGeo, toonMat(0x222636));
   gripMesh.position.set(0, -0.16, -0.14);
   gripMesh.rotation.x = -0.28;
   gun.add(gripMesh);
 
-  // Detachable Curved Vandal Banana Magazine
   const magGroup = new THREE.Group();
   const magUpper = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.24, 0.12), toonMat(0x1e2233));
-  addAnimeOutline(magUpper, 1.07, PALETTE.MEMORIA_CYAN);
+  addAnimeOutline(magUpper, 1.07, PALETTE.CRYSTAL_CYAN);
   const magGlow = new THREE.Mesh(
     new THREE.BoxGeometry(0.082, 0.18, 0.035),
     new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER })
@@ -161,7 +154,6 @@ function createVandalRifleMesh() {
   magGroup.rotation.x = 0.22;
   gun.add(magGroup);
 
-  // Muzzle Flash Star
   const flashGeo = new THREE.OctahedronGeometry(0.14, 0);
   const flashMat = new THREE.MeshBasicMaterial({
     color: PALETTE.MOTE_CORE,
@@ -176,7 +168,7 @@ function createVandalRifleMesh() {
   return { gun, magGroup, flashMesh, flashMat };
 }
 
-const SETTINGS_KEY = "dao_den_long_settings_v11";
+const SETTINGS_KEY = "dao_den_long_settings_v12";
 
 function loadSavedSettings() {
   try {
@@ -186,10 +178,11 @@ function loadSavedSettings() {
       return {
         volume: Math.max(0, Math.min(100, Number(parsed.volume ?? 75))),
         mouseSens: Math.max(20, Math.min(200, Number(parsed.mouseSens ?? 100))),
+        colorblind: Boolean(parsed.colorblind ?? false),
       };
     }
   } catch (_) {}
-  return { volume: 75, mouseSens: 100 };
+  return { volume: 75, mouseSens: 100, colorblind: false };
 }
 
 function saveSettings(settings) {
@@ -204,21 +197,29 @@ async function loadContract() {
     if (res.ok) return await res.json();
   } catch (_) {}
   return {
-    contract_version: "1.1",
+    contract_version: "1.2",
     tuning: {
       player_speed: 6.0,
       dash_speed: 14.0,
       dash_duration_s: 0.2,
       dash_cooldown_s: 1.5,
       carry_capacity: 10,
+      capacity_max: 20,
       lantern_cost: 10,
+      relight_cost: 5,
+      fuel_max: 100,
+      fuel_decay_per_s: 1.0,
+      fuel_per_mote: 10,
+      low_fuel_threshold: 30,
+      drain_per_s: 5,
+      win_ratio: 0.6,
       pickup_radius: 1.0,
       interact_radius: 2.0,
       pulse_cost: 3,
       pulse_radius: 5.0,
-      night1_duration_s: 300,
-      night2_duration_s: 330,
-      night3_duration_s: 360,
+      night1_duration_s: 240,
+      night2_duration_s: 270,
+      night3_duration_s: 300,
       flames: 3,
       invuln_s: 1.5,
       hit_drop_ratio: 0.5,
@@ -229,7 +230,7 @@ async function loadContract() {
       shade_speed: 4.0,
       shade_hit_radius: 1.0,
       fall_enabled: true,
-      score: { per_mote: 10, per_lantern: 100, per_stun: 5, per_second_left: 2, per_flame_left: 50 },
+      score: { per_mote: 5, per_lantern: 100, per_relight: 40, per_stun: 5, per_stun_drain: 15, per_second_left: 0, per_flame_left: 50 },
     },
   };
 }
@@ -244,9 +245,8 @@ class AnimeThreeIslandsApp {
     const params = new URLSearchParams(window.location.search);
     this.currentNight = Number(params.get("night")) || 1;
     if (![1, 2, 3].includes(this.currentNight)) this.currentNight = 1;
-
-    // First-Person Mode is default per user request (can toggle with [V] or HUD button)
     this.firstPerson = params.get("tps") === "1" ? false : true;
+    if (params.get("cb") === "1") this.settings.colorblind = true;
 
     this.wonNightScores = { 1: 0, 2: 0, 3: 0 };
     this.sim = new GameSimulationJS(this.tuning, 2026 + this.currentNight, this.currentNight);
@@ -254,22 +254,19 @@ class AnimeThreeIslandsApp {
     this.started = false;
     this.botEnabled = false;
     this.camYawDeg = 0;
-    this.fpsPitch = -0.06;
+    this.fpsPitch = -0.05;
     this.camPitch = 0.44;
     this.camDist = 11.5;
     this.lastCountdownSec = -1;
     this.walkCyclePhase = 0;
 
-    // Vandal Rifle & Floor Magazine State (Purely client-side so Headless Contract v1.1 is untouched)
-    this.vandalClipMax = 25;
-    this.vandalClip = 25;
-    this.vandalReserve = 75;
-    this.vandalMagsPicked = 3;
+    this.rifleClipMax = 25;
+    this.rifleClip = 25;
+    this.rifleReserve = 75;
+    this.rifleMagsPicked = 3;
     this.isReloading = false;
     this.lastShotTime = 0;
-    this.bulletTracers = [];
     this.floorMagazines = [];
-    this.afterimages = [];
 
     this.keys = {};
     this.pendingJump = false;
@@ -289,8 +286,8 @@ class AnimeThreeIslandsApp {
 
     this._initScene();
     this._buildSeaOfCloudsAndStars();
-    this._buildPlayerEvernight();
-    this._buildFPSVandalViewmodel();
+    this._buildPlayerCharacter();
+    this._buildFPSRifleViewmodel();
     this._rebuildNightWorld(this.currentNight);
     this._syncEntities(0, 0.016);
     this._bindEvents();
@@ -307,6 +304,24 @@ class AnimeThreeIslandsApp {
     this.fpsLastCheck = performance.now();
     this.currentFps = 60;
     requestAnimationFrame((t) => this._loop(t));
+  }
+
+  // Equivalent of Unity's Cursor.lockState = CursorLockMode.Locked via Pointer Lock API
+  _lockCursor() {
+    try {
+      const canvas = this.renderer?.domElement;
+      if (canvas && canvas.requestPointerLock && document.pointerLockElement !== canvas) {
+        canvas.requestPointerLock();
+      }
+    } catch (_) {}
+  }
+
+  _unlockCursor() {
+    try {
+      if (document.pointerLockElement && document.exitPointerLock) {
+        document.exitPointerLock();
+      }
+    } catch (_) {}
   }
 
   _initScene() {
@@ -339,15 +354,12 @@ class AnimeThreeIslandsApp {
     this.scene.add(this.islandRoot);
   }
 
-  _buildFPSVandalViewmodel() {
-    // First-Person Vandal Rifle & Evernight Right Forearm attached directly to Camera
+  _buildFPSRifleViewmodel() {
     this.fpsWeaponPivot = new THREE.Group();
-    this.fpsVandal = createVandalRifleMesh();
-    // Flip gun so barrel (+Z in local) points along camera -Z
-    this.fpsVandal.gun.rotation.y = Math.PI;
-    this.fpsWeaponPivot.add(this.fpsVandal.gun);
+    this.fpsRifle = createLightRifleMesh();
+    this.fpsRifle.gun.rotation.y = Math.PI;
+    this.fpsWeaponPivot.add(this.fpsRifle.gun);
 
-    // Evernight Gloved Hand & Starry Sleeve on the FPS Vandal
     const armGeo = new THREE.CylinderGeometry(0.055, 0.07, 0.42, 10);
     const armMesh = new THREE.Mesh(armGeo, toonMat(0x231b3d));
     armMesh.rotation.x = Math.PI / 2.4;
@@ -355,20 +367,18 @@ class AnimeThreeIslandsApp {
     addAnimeOutline(armMesh, 1.06, PALETTE.GOLD_BORDER);
     this.fpsWeaponPivot.add(armMesh);
 
-    // Base FPS viewmodel position in lower-right corner
     this.fpsBasePos = { x: 0.34, y: -0.27, z: -0.56 };
     this.fpsRecoilOffset = { z: 0, pitch: 0, roll: 0 };
     this.fpsWeaponPivot.position.set(this.fpsBasePos.x, this.fpsBasePos.y, this.fpsBasePos.z);
     this.camera.add(this.fpsWeaponPivot);
   }
 
-  _buildPlayerEvernight() {
-    // Articulated 3D Anime Character Model: Evernight (HSR Inspired) with full skeletal joints for Run & Genshin Dash
+  _buildPlayerCharacter() {
+    // Articulated 3D Anime Character Rig with full joints for Run Cycle & Wind Dash
     this.mayGroup = new THREE.Group();
     this.charRig = new THREE.Group();
     this.mayGroup.add(this.charRig);
 
-    // 1. Torso & HSR Starry Astral Coat (#1f1938 with #E8E2D0 inner dress & #C8102E / #F2C14E trim)
     this.torsoPivot = new THREE.Group();
     this.torsoPivot.position.y = 0.88;
     this.charRig.add(this.torsoPivot);
@@ -382,7 +392,6 @@ class AnimeThreeIslandsApp {
     chestRibbon.position.set(0, 0.3, 0.23);
     this.torsoPivot.add(chestRibbon);
 
-    // Flowing Split Coat Tails (animate during run & dash)
     this.leftCoatTail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.62, 0.06), toonMat(PALETTE.MAY_ROBE));
     this.leftCoatTail.position.set(-0.16, -0.22, -0.18);
     addAnimeOutline(this.leftCoatTail, 1.06, PALETTE.MAY_SCARF);
@@ -393,13 +402,11 @@ class AnimeThreeIslandsApp {
     addAnimeOutline(this.rightCoatTail, 1.06, PALETTE.MAY_SCARF);
     this.torsoPivot.add(this.rightCoatTail);
 
-    // Scarf
     const scarfMesh = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.07, 8, 16), toonMat(PALETTE.MAY_SCARF));
     scarfMesh.rotation.x = Math.PI / 2;
     scarfMesh.position.y = 0.48;
     this.torsoPivot.add(scarfMesh);
 
-    // 2. Head & Silver-Lavender HSR Anime Hair + Twin Flowing Tails
     this.headPivot = new THREE.Group();
     this.headPivot.position.y = 0.68;
     this.torsoPivot.add(this.headPivot);
@@ -408,7 +415,6 @@ class AnimeThreeIslandsApp {
     addAnimeOutline(headMesh, 1.07);
     this.headPivot.add(headMesh);
 
-    // Glowing Star-Rail Crimson-Violet Anime Eyes
     const eyeGeo = new THREE.SphereGeometry(0.045, 8, 8);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3b9d });
     const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
@@ -417,7 +423,6 @@ class AnimeThreeIslandsApp {
     eyeR.position.set(0.09, 0.0, 0.23);
     this.headPivot.add(eyeL, eyeR);
 
-    // Silver-Lavender Hair Dome & Twin Tails
     const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.285, 14, 12), toonMat(0xdad2f5));
     hairCap.position.set(0, 0.05, -0.03);
     addAnimeOutline(hairCap, 1.06, 0x2b1d4a);
@@ -435,13 +440,11 @@ class AnimeThreeIslandsApp {
     addAnimeOutline(this.rightHairTail, 1.06);
     this.headPivot.add(this.rightHairTail);
 
-    // Starlight Crown / Nón Lá Halo Ornament
     const crownMesh = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.28, 16), toonMat(PALETTE.SAND));
     crownMesh.position.set(0, 0.3, -0.02);
     addAnimeOutline(crownMesh, 1.05, PALETTE.GOLD_BORDER);
     this.headPivot.add(crownMesh);
 
-    // 3. Articulated Left & Right Arms + 3rd-Person Vandal Rifle
     this.leftArmPivot = new THREE.Group();
     this.leftArmPivot.position.set(-0.3, 0.4, 0);
     const leftArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.52, 8), toonMat(PALETTE.MAY_ROBE));
@@ -457,13 +460,12 @@ class AnimeThreeIslandsApp {
     addAnimeOutline(rightArmMesh, 1.07);
     this.rightArmPivot.add(rightArmMesh);
 
-    this.tpsVandal = createVandalRifleMesh();
-    this.tpsVandal.gun.scale.setScalar(0.85);
-    this.tpsVandal.gun.position.set(0.0, -0.35, 0.28);
-    this.rightArmPivot.add(this.tpsVandal.gun);
+    this.tpsRifle = createLightRifleMesh();
+    this.tpsRifle.gun.scale.setScalar(0.85);
+    this.tpsRifle.gun.position.set(0.0, -0.35, 0.28);
+    this.rightArmPivot.add(this.tpsRifle.gun);
     this.torsoPivot.add(this.rightArmPivot);
 
-    // 4. Articulated Left & Right Legs (Thigh + High Anime Boots)
     this.leftLegPivot = new THREE.Group();
     this.leftLegPivot.position.set(-0.13, 0.72, 0);
     const leftLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.06, 0.7, 10), toonMat(0x1b1530));
@@ -480,10 +482,9 @@ class AnimeThreeIslandsApp {
     this.rightLegPivot.add(rightLegMesh);
     this.charRig.add(this.rightLegPivot);
 
-    // 5. Genshin Elemental Dash Wind Vortex Ring around Character
     const windRingGeo = new THREE.TorusGeometry(0.95, 0.045, 8, 28);
     this.dashWindRingMat = new THREE.MeshBasicMaterial({
-      color: PALETTE.MEMORIA_CYAN,
+      color: PALETTE.CRYSTAL_CYAN,
       transparent: true,
       opacity: 0.0,
     });
@@ -492,7 +493,6 @@ class AnimeThreeIslandsApp {
     this.dashWindRing.position.y = 0.9;
     this.mayGroup.add(this.dashWindRing);
 
-    // Orbiting Wind Charm Talisman
     const charmOrbitGeo = new THREE.BoxGeometry(0.24, 0.42, 0.04);
     const charmOrbitMat = new THREE.MeshBasicMaterial({ color: PALETTE.MAY_SCARF });
     this.activeCharmMesh = new THREE.Mesh(charmOrbitGeo, charmOrbitMat);
@@ -514,7 +514,6 @@ class AnimeThreeIslandsApp {
     const isDashing = this.sim.dash_active_ticks > 0;
 
     if (isDashing) {
-      // Genshin Impact Elemental Sprint / Lunge Pose + Vortex Ring
       this.torsoPivot.rotation.x = 0.62;
       this.leftLegPivot.rotation.x = -0.65;
       this.rightLegPivot.rotation.x = 0.55;
@@ -529,7 +528,6 @@ class AnimeThreeIslandsApp {
       this.dashWindRing.rotation.z = elapsedSec * 14.0;
       this.dashWindRing.scale.setScalar(1.0 + Math.sin(elapsedSec * 25) * 0.15);
     } else if (isMoving) {
-      // Dynamic Run Cycle Animation (Legs, Arms, Hair Tails, Coat Tails)
       this.walkCyclePhase += dt * speedXZ * 2.4;
       const swing = Math.sin(this.walkCyclePhase);
       const counterSwing = Math.cos(this.walkCyclePhase);
@@ -539,7 +537,6 @@ class AnimeThreeIslandsApp {
       this.leftLegPivot.rotation.x = swing * 0.82;
       this.rightLegPivot.rotation.x = -swing * 0.82;
       this.leftArmPivot.rotation.x = -swing * 0.65;
-      // Right arm holds the Vandal rifle aimed forward with slight run bounce
       this.rightArmPivot.rotation.x = -0.65 + counterSwing * 0.15;
 
       this.leftCoatTail.rotation.x = 0.28 + Math.abs(swing) * 0.25;
@@ -548,7 +545,6 @@ class AnimeThreeIslandsApp {
       this.rightHairTail.rotation.x = Math.PI * 0.8 + Math.abs(counterSwing) * 0.22;
       this.dashWindRingMat.opacity = 0.0;
     } else {
-      // Idle Breathing Pose
       const breath = Math.sin(elapsedSec * 3.0) * 0.04;
       this.torsoPivot.rotation.x = breath;
       this.torsoPivot.position.y = 0.88 + breath * 0.3;
@@ -563,7 +559,6 @@ class AnimeThreeIslandsApp {
       this.dashWindRingMat.opacity = 0.0;
     }
 
-    // First-Person Vandal Viewmodel Bob, Dash Tilt & Recoil Recovery
     if (this.fpsWeaponPivot) {
       const bobX = isMoving ? Math.cos(this.walkCyclePhase * 0.5) * 0.018 : 0;
       const bobY = isMoving ? Math.abs(Math.sin(this.walkCyclePhase)) * 0.022 : Math.sin(elapsedSec * 2.5) * 0.005;
@@ -575,25 +570,19 @@ class AnimeThreeIslandsApp {
         this.fpsBasePos.y + bobY,
         this.fpsBasePos.z + dashZ + this.fpsRecoilOffset.z
       );
-      this.fpsWeaponPivot.rotation.set(
-        this.fpsRecoilOffset.pitch,
-        0,
-        dashRoll + this.fpsRecoilOffset.roll
-      );
+      this.fpsWeaponPivot.rotation.set(this.fpsRecoilOffset.pitch, 0, dashRoll + this.fpsRecoilOffset.roll);
     }
   }
 
-  _triggerGenshinDashAnim() {
-    // 1. Screen speed-lines & cyan-gold elemental flash
-    anime.remove("#genshin-dash-fx");
+  _triggerWindDashAnim() {
+    anime.remove("#wind-dash-fx");
     anime({
-      targets: "#genshin-dash-fx",
+      targets: "#wind-dash-fx",
       opacity: [0.95, 0],
       duration: 380,
       easing: "easeOutQuad",
     });
 
-    // 2. 360-degree Genshin aerial dash spin on character rig
     anime.remove(this.charRig.rotation);
     anime({
       targets: this.charRig.rotation,
@@ -605,11 +594,10 @@ class AnimeThreeIslandsApp {
       },
     });
 
-    // 3. Spawn glowing translucent afterimage clone at dash start position
     const p = this.sim.player;
     const ghostGeo = new THREE.ConeGeometry(0.45, 1.45, 10);
     const ghostMat = new THREE.MeshBasicMaterial({
-      color: PALETTE.MEMORIA_CYAN,
+      color: PALETTE.CRYSTAL_CYAN,
       transparent: true,
       opacity: 0.65,
     });
@@ -629,7 +617,7 @@ class AnimeThreeIslandsApp {
     });
   }
 
-  // --- Valorant Vandal Shooting, Reloading & Floor Ammo Magazines ---
+  // --- Light Rifle Shooting, Reloading & Floor Ammo Magazines ---
 
   _spawnFloorMagazinesForNight(night) {
     for (const m of this.floorMagazines) {
@@ -675,7 +663,6 @@ class AnimeThreeIslandsApp {
       const [x, y, z] = magCoords[i];
       const group = new THREE.Group();
 
-      // Glowing floor pad
       const padRing = new THREE.Mesh(
         new THREE.RingGeometry(0.55, 0.72, 24),
         new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide })
@@ -684,7 +671,6 @@ class AnimeThreeIslandsApp {
       padRing.position.y = 0.05;
       group.add(padRing);
 
-      // 3D Curved Vandal Ammo Magazine Box
       const magMesh = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.46, 0.26), toonMat(0x1e2436));
       addAnimeOutline(body, 1.1, 0x00ffcc);
@@ -728,34 +714,33 @@ class AnimeThreeIslandsApp {
         mag.available = false;
         mag.group.visible = false;
         mag.respawnSec = 10.0;
-        this.vandalReserve += 25;
-        this.vandalMagsPicked += 1;
+        this.rifleReserve += 25;
+        this.rifleMagsPicked += 1;
         this.audio.playAmmoPickup();
-        this._updateVandalHUD();
+        this._updateRifleHUD();
       }
     }
   }
 
-  _shootVandal() {
+  _shootRifle() {
     if (!this.started || this.sim.state !== "playing" || this.isReloading) return;
     const now = performance.now();
-    if (now - this.lastShotTime < 105) return; // Vandal 9.5 rounds/sec fire rate
+    if (now - this.lastShotTime < 105) return;
 
-    if (this.vandalClip <= 0) {
-      this._reloadVandal();
+    if (this.rifleClip <= 0) {
+      this._reloadRifle();
       return;
     }
 
     this.lastShotTime = now;
-    this.vandalClip -= 1;
-    this.audio.playVandalShot();
-    this._updateVandalHUD();
+    this.rifleClip -= 1;
+    this.audio.playRifleShot();
+    this._updateRifleHUD();
 
-    // 1. Anime.js Vandal Recoil Kick & Muzzle Flash
-    this.fpsVandal.flashMat.opacity = 1.0;
-    anime.remove(this.fpsVandal.flashMat);
+    this.fpsRifle.flashMat.opacity = 1.0;
+    anime.remove(this.fpsRifle.flashMat);
     anime({
-      targets: this.fpsVandal.flashMat,
+      targets: this.fpsRifle.flashMat,
       opacity: [1.0, 0.0],
       duration: 75,
       easing: "linear",
@@ -771,7 +756,6 @@ class AnimeThreeIslandsApp {
       easing: "easeOutQuad",
     });
 
-    // 2. Compute Aim Ray & Spawn 3D Bullet Tracer + Ejected Magazine/Casing
     const p = this.sim.player;
     const yawRad = (this.camYawDeg * Math.PI) / 180.0;
     const dirX = Math.sin(yawRad);
@@ -779,8 +763,8 @@ class AnimeThreeIslandsApp {
     const startPos = new THREE.Vector3(p.pos[0] + dirX * 0.6, p.pos[1] + 1.35, p.pos[2] + dirZ * 0.6);
     const endPos = new THREE.Vector3(p.pos[0] + dirX * 32.0, p.pos[1] + 1.35, p.pos[2] + dirZ * 32.0);
 
-    // Check hit against Shades (Bóng Mực) and Drifters (Gió Lạc) along the shot ray
     let hitTarget = null;
+    let hitIsDrifter = false;
     let bestDist = 32.0;
 
     for (const s of this.sim.shades) {
@@ -789,34 +773,106 @@ class AnimeThreeIslandsApp {
       const proj = toX * dirX + toZ * dirZ;
       if (proj > 0 && proj < bestDist) {
         const perp = Math.abs(toX * dirZ - toZ * dirX);
-        if (perp <= 1.25 && Math.abs(s.pos[1] - p.pos[1]) <= 2.2) {
+        if (perp <= 1.35 && Math.abs(s.pos[1] - p.pos[1]) <= 3.2) {
           bestDist = proj;
-          hitTarget = { kind: "shade", entity: s };
+          hitTarget = s;
+          hitIsDrifter = false;
+        }
+      }
+    }
+
+    for (const d of this.sim.drifters) {
+      if (d.state === "removed") continue;
+      const toX = d.pos[0] - p.pos[0];
+      const toZ = d.pos[2] - p.pos[2];
+      const proj = toX * dirX + toZ * dirZ;
+      if (proj > 0 && proj < bestDist) {
+        const perp = Math.abs(toX * dirZ - toZ * dirX);
+        if (perp <= 1.55 && Math.abs(d.pos[1] - p.pos[1]) <= 4.5) {
+          bestDist = proj;
+          hitTarget = d;
+          hitIsDrifter = true;
         }
       }
     }
 
     if (hitTarget) {
-      const s = hitTarget.entity;
-      endPos.set(s.pos[0], s.pos[1] + 0.8, s.pos[2]);
-      s.state = "stunned";
-      s.state_ticks_left = Math.max(s.state_ticks_left || 0, 75);
-      s.pos[0] += dirX * 1.35;
-      s.pos[2] += dirZ * 1.35;
-      this.sim._enforceSafeZonesForShade(s);
+      const t = hitTarget;
+      if (typeof t._combatHp !== "number") t._combatHp = 3;
+      t._combatHp = Math.max(0, t._combatHp - 1);
 
-      // Flash Valorant Red Hitmarker
+      const hitY = hitIsDrifter ? t.pos[1] + 1.25 : t.pos[1] + 0.8;
+      endPos.set(t.pos[0], hitY, t.pos[2]);
+
+      if (!hitIsDrifter) {
+        const s = t;
+        s.state = "stunned";
+        s.state_ticks_left = Math.max(s.state_ticks_left || 0, 75);
+        s.drain_ticks = 0;
+        s.pos[0] += dirX * 1.35;
+        s.pos[2] += dirZ * 1.35;
+        this.sim._enforceSafeZonesForShade(s);
+
+        if (s._combatHp <= 0) {
+          s._combatHp = 3;
+          s.state_ticks_left = 180;
+          s.pos[0] += dirX * 1.65;
+          s.pos[2] += dirZ * 1.65;
+          this.sim._enforceSafeZonesForShade(s);
+          this._spawnShatterExplosion(s.pos[0], s.pos[1] + 0.85, s.pos[2], false);
+          const sEntry = this.shadeMeshes.get(s.id);
+          if (sEntry) {
+            anime.remove(sEntry.group.scale);
+            anime({
+              targets: sEntry.group.scale,
+              x: [1.45, 0.08, 1.0],
+              y: [1.45, 0.08, 1.0],
+              z: [1.45, 0.08, 1.0],
+              duration: 580,
+              easing: "easeOutElastic(1, .6)",
+            });
+          }
+        }
+      } else {
+        const d = t;
+        d.pos[0] += dirX * 1.4;
+        d.pos[2] += dirZ * 1.4;
+        if (d._combatHp <= 0) {
+          d._combatHp = 3;
+          if (d.carrying > 0 && typeof this.sim._dropMotes === "function") {
+            this.sim._dropMotes(d.pos[0], d.pos[2], d.carrying);
+            d.carrying = 0;
+          }
+          d.state = "patrol";
+          d.steal_cd = 240;
+          d.pos[0] += dirX * 2.2;
+          d.pos[2] += dirZ * 2.2;
+          this._spawnShatterExplosion(d.pos[0], d.pos[1] + 1.25, d.pos[2], true);
+          const dEntry = this.drifterMeshes.get(d.id);
+          if (dEntry) {
+            anime.remove(dEntry.group.scale);
+            anime({
+              targets: dEntry.group.scale,
+              x: [1.5, 0.05, 1.0],
+              y: [1.5, 0.05, 1.0],
+              z: [1.5, 0.05, 1.0],
+              duration: 620,
+              easing: "easeOutElastic(1, .6)",
+            });
+          }
+        }
+      }
+
       anime.remove("#fps-hitmarker");
       anime({
         targets: "#fps-hitmarker",
         opacity: [1, 0],
-        scale: [1.3, 1.0],
+        scale: [1.35, 1.0],
         duration: 180,
         easing: "easeOutQuad",
       });
     }
 
-    // 3D Glowing Bullet Tracer Line
     const pts = [startPos, endPos];
     const tracerGeo = new THREE.BufferGeometry().setFromPoints(pts);
     const tracerMat = new THREE.LineBasicMaterial({
@@ -838,54 +894,206 @@ class AnimeThreeIslandsApp {
       },
     });
 
-    if (this.vandalClip === 0 && this.vandalReserve > 0) {
-      this._reloadVandal();
+    if (this.rifleClip === 0 && this.rifleReserve > 0) {
+      this._reloadRifle();
     }
   }
 
-  _reloadVandal() {
-    if (this.isReloading || this.vandalClip >= this.vandalClipMax || this.vandalReserve <= 0) return;
+  _spawnShatterExplosion(wx, wy, wz, isDrifter = false) {
+    if (this.audio && typeof this.audio.playShatter === "function") {
+      this.audio.playShatter();
+    }
+    const shardCount = isDrifter ? 18 : 16;
+    const primaryHex = isDrifter
+      ? PALETTE.CRYSTAL_CYAN
+      : this.settings.colorblind
+        ? PALETTE.SHADE_RIM_CB
+        : PALETTE.SHADE_RIM;
+    const secondaryHex = isDrifter ? PALETTE.GOLD_BORDER : PALETTE.SHADE_BODY;
+
+    // Expanding shockwave ring
+    const ringGeo = new THREE.TorusGeometry(0.35, 0.06, 8, 24);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: primaryHex,
+      transparent: true,
+      opacity: 0.95,
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.position.set(wx, wy, wz);
+    ringMesh.rotation.x = Math.PI / 2;
+    this.scene.add(ringMesh);
+    anime({
+      targets: ringMesh.scale,
+      x: [0.5, 4.2],
+      y: [0.5, 4.2],
+      z: [0.5, 4.2],
+      duration: 460,
+      easing: "easeOutCubic",
+    });
+    anime({
+      targets: ringMat,
+      opacity: [0.95, 0],
+      duration: 460,
+      easing: "linear",
+      complete: () => {
+        this.scene.remove(ringMesh);
+        ringGeo.dispose();
+        ringMat.dispose();
+      },
+    });
+
+    // 3D Crystal / Ink Shatter Shards
+    for (let i = 0; i < shardCount; i++) {
+      const shardGeo = new THREE.OctahedronGeometry(0.14 + Math.random() * 0.12, 0);
+      const shardMat = new THREE.MeshBasicMaterial({
+        color: i % 2 === 0 ? primaryHex : secondaryHex,
+        transparent: true,
+        opacity: 1.0,
+      });
+      const shard = new THREE.Mesh(shardGeo, shardMat);
+      shard.position.set(wx, wy, wz);
+      this.scene.add(shard);
+
+      const angle = (2 * Math.PI * i) / shardCount + (Math.random() - 0.5) * 0.35;
+      const dist = 1.4 + Math.random() * 1.9;
+      const targetX = wx + Math.cos(angle) * dist;
+      const targetZ = wz + Math.sin(angle) * dist;
+      const targetY = wy + (Math.random() - 0.25) * 1.8;
+
+      anime({
+        targets: shard.position,
+        x: targetX,
+        y: targetY,
+        z: targetZ,
+        duration: 540,
+        easing: "easeOutCubic",
+      });
+      anime({
+        targets: shard.rotation,
+        x: Math.random() * Math.PI * 4,
+        y: Math.random() * Math.PI * 4,
+        z: Math.random() * Math.PI * 4,
+        duration: 540,
+        easing: "linear",
+      });
+      anime({
+        targets: shard.scale,
+        x: [1.1, 0.01],
+        y: [1.1, 0.01],
+        z: [1.1, 0.01],
+        duration: 540,
+        easing: "easeInQuad",
+        complete: () => {
+          this.scene.remove(shard);
+          shardGeo.dispose();
+          shardMat.dispose();
+        },
+      });
+    }
+  }
+
+  _reloadRifle() {
+    if (this.isReloading || this.rifleClip >= this.rifleClipMax || this.rifleReserve <= 0) return;
     this.isReloading = true;
     this.audio.playReload();
-    this._updateVandalHUD();
+    this._updateRifleHUD();
 
-    // Animate the 3D Vandal Magazine detaching & snapping a fresh magazine in
-    const mag = this.fpsVandal.magGroup;
+    const mag = this.fpsRifle.magGroup;
+    const gun = this.fpsRifle.gun;
+
+    // Eject discarded 3D magazine mesh that falls & tumbles
+    const droppedMagGeo = new THREE.BoxGeometry(0.05, 0.22, 0.09);
+    const droppedMagMat = new THREE.MeshBasicMaterial({
+      color: PALETTE.CRYSTAL_CYAN,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const droppedMag = new THREE.Mesh(droppedMagGeo, droppedMagMat);
+    const p = this.sim.player;
+    droppedMag.position.set(p.pos[0], p.pos[1] + 1.15, p.pos[2]);
+    this.scene.add(droppedMag);
+    anime({
+      targets: droppedMag.position,
+      y: p.pos[1] + 0.08,
+      duration: 420,
+      easing: "easeInQuad",
+    });
+    anime({
+      targets: droppedMag.rotation,
+      x: Math.PI * 1.5,
+      z: Math.PI * 0.8,
+      duration: 420,
+      easing: "linear",
+    });
+    anime({
+      targets: droppedMagMat,
+      opacity: [0.9, 0],
+      duration: 460,
+      easing: "linear",
+      complete: () => {
+        this.scene.remove(droppedMag);
+        droppedMagGeo.dispose();
+        droppedMagMat.dispose();
+      },
+    });
+
+    // Animate 3rd-person character arm during reload
+    if (this.rightArmPivot) {
+      anime({
+        targets: this.rightArmPivot.rotation,
+        x: [-0.55, -1.15, -0.55],
+        z: [0, -0.35, 0],
+        duration: 680,
+        easing: "easeInOutQuad",
+      });
+    }
+
+    // 3-Stage FPS Rifle Tilt + Magazine Detach + Fresh Glowing Magazine Slap-In
+    anime({
+      targets: gun.rotation,
+      z: [0, 0.38, 0.38, -0.1, 0],
+      x: [0, 0.22, 0.22, -0.08, 0],
+      duration: 700,
+      easing: "easeInOutQuad",
+    });
+
     anime
       .timeline({
         complete: () => {
-          const needed = this.vandalClipMax - this.vandalClip;
-          const take = Math.min(needed, this.vandalReserve);
-          this.vandalClip += take;
-          this.vandalReserve -= take;
+          const needed = this.rifleClipMax - this.rifleClip;
+          const take = Math.min(needed, this.rifleReserve);
+          this.rifleClip += take;
+          this.rifleReserve -= take;
           this.isReloading = false;
-          this._updateVandalHUD();
+          this._updateRifleHUD();
         },
       })
       .add({
         targets: mag.position,
-        y: [-0.2, -0.58],
+        y: [-0.2, -0.62],
+        z: [-0.05, -0.16],
         duration: 240,
         easing: "easeInQuad",
       })
       .add({
         targets: mag.position,
-        y: [-0.58, -0.2],
-        duration: 280,
+        y: [-0.62, -0.2],
+        z: [-0.16, -0.05],
+        duration: 300,
         delay: 140,
         easing: "easeOutBack",
       });
   }
 
-  _updateVandalHUD() {
-    document.getElementById("vandal-clip").textContent = this.vandalClip;
-    document.getElementById("vandal-reserve").textContent = this.vandalReserve;
-    document.getElementById("vandal-mags-picked").textContent = this.vandalMagsPicked;
-    const badge = document.getElementById("vandal-state-badge");
+  _updateRifleHUD() {
+    document.getElementById("rifle-clip").textContent = this.rifleClip;
+    document.getElementById("rifle-reserve").textContent = this.rifleReserve;
+    document.getElementById("rifle-mags-picked").textContent = this.rifleMagsPicked;
+    const badge = document.getElementById("rifle-state-badge");
     if (this.isReloading) {
       badge.textContent = "ĐANG THAY BĂNG ĐẠN...";
       badge.style.color = "#FFB347";
-    } else if (this.vandalClip === 0 && this.vandalReserve === 0) {
+    } else if (this.rifleClip === 0 && this.rifleReserve === 0) {
       badge.textContent = "HẾT ĐẠN — NHẶT BĂNG ĐẠN!";
       badge.style.color = "#FF5A5F";
     } else {
@@ -936,7 +1144,6 @@ class AnimeThreeIslandsApp {
     }
     this.scene.add(this.cloudsGroup);
 
-    // Cloud Koi (Cá Mây)
     this.koiGroup = new THREE.Group();
     const koiGeo = new THREE.ConeGeometry(0.45, 1.6, 8);
     const koiMat = new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER });
@@ -948,7 +1155,6 @@ class AnimeThreeIslandsApp {
     }
     this.scene.add(this.koiGroup);
 
-    // Starry Sky
     const starCount = 450;
     const starPositions = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
@@ -964,7 +1170,6 @@ class AnimeThreeIslandsApp {
     const starMat = new THREE.PointsMaterial({ color: PALETTE.MOTE_CORE, size: 0.9, transparent: true, opacity: 0.85 });
     this.scene.add(new THREE.Points(starGeo, starMat));
 
-    // Volumetric Dark Mist Sprites (#1B2350)
     this.mistGroup = new THREE.Group();
     for (let i = 0; i < 20; i++) {
       const mat = new THREE.SpriteMaterial({
@@ -985,7 +1190,6 @@ class AnimeThreeIslandsApp {
     }
     this.scene.add(this.mistGroup);
 
-    // Night 3 Wind Leaves
     this.windLeavesGroup = new THREE.Group();
     const leafGeo = new THREE.PlaneGeometry(0.28, 0.16);
     const leafMat = new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER, side: THREE.DoubleSide });
@@ -1141,10 +1345,21 @@ class AnimeThreeIslandsApp {
     this.islandRoot.add(this._buildOngDangNPC());
     this._spawnFloorMagazinesForNight(night);
 
+    // Build HUD fuel chips for lanterns L1..Ln
+    const fuelRow = document.getElementById("lantern-fuel-row");
+    fuelRow.innerHTML = "";
+    for (const l of this.sim.lanterns) {
+      const chip = document.createElement("div");
+      chip.className = "lf-chip";
+      chip.id = `lf-chip-${l.id}`;
+      chip.innerHTML = `<span>${l.id}</span><div class="lf-bar-bg"><div class="lf-bar-fill" id="lf-fill-${l.id}"></div></div>`;
+      fuelRow.appendChild(chip);
+    }
+
     const names = {
-      1: "ĐÊM 1 · ĐẢO BẾN · EVERNIGHT (HSR)",
-      2: "ĐÊM 2 · ĐẢO CAU · EVERNIGHT (HSR)",
-      3: "ĐÊM 3 · ĐẢO CHUÔNG · EVERNIGHT (HSR)",
+      1: "ĐÊM 1 · ĐẢO BẾN · MÂY",
+      2: "ĐÊM 2 · ĐẢO CAU · MÂY",
+      3: "ĐÊM 3 · ĐẢO CHUÔNG · MÂY",
     };
     document.getElementById("hud-night-label").textContent = names[night] || "ĐẢO ĐÈN LỒNG";
     [1, 2, 3].forEach((n) => {
@@ -1154,6 +1369,9 @@ class AnimeThreeIslandsApp {
   }
 
   _createLanternMesh(lData) {
+    // TICKET-03 Part 1 & Part 6:
+    // - 3D Fuel Bar above lantern
+    // - Unlit lanterns squashed 20% vertically (core.scale.y = 0.8) and have torn paper marks
     const group = new THREE.Group();
     const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.2, 0.5, 8), toonMat(PALETTE.LANTERN_OFF));
     base.position.y = 0.25;
@@ -1175,10 +1393,40 @@ class AnimeThreeIslandsApp {
     addAnimeOutline(core, 1.07);
     group.add(core);
 
+    // Torn Paper Scar Stripes (visible when unlit for non-color distinction!)
+    const tearGroup = new THREE.Group();
+    const tear1 = new THREE.Mesh(
+      new THREE.BoxGeometry(0.85, 0.08, 0.85),
+      new THREE.MeshBasicMaterial({ color: 0x120a1a })
+    );
+    tear1.rotation.z = 0.42;
+    const tear2 = new THREE.Mesh(
+      new THREE.BoxGeometry(0.85, 0.07, 0.85),
+      new THREE.MeshBasicMaterial({ color: 0x120a1a })
+    );
+    tear2.rotation.z = -0.35;
+    tear2.position.y = -0.2;
+    tearGroup.add(tear1, tear2);
+    tearGroup.position.y = 3.2;
+    group.add(tearGroup);
+
     const roof = new THREE.Mesh(new THREE.ConeGeometry(1.18, 0.72, 6), toonMat(PALETTE.WOOD));
     roof.position.y = 4.1;
     addAnimeOutline(roof, 1.06);
     group.add(roof);
+
+    // 3D Floating Fuel Bar above Lantern Roof
+    const fuelBarGroup = new THREE.Group();
+    fuelBarGroup.position.y = 4.85;
+    const bgBar = new THREE.Mesh(
+      new THREE.BoxGeometry(1.44, 0.18, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0x0e1430 })
+    );
+    const fuelFillMat = new THREE.MeshBasicMaterial({ color: PALETTE.LANTERN_LIT });
+    const fuelFill = new THREE.Mesh(new THREE.BoxGeometry(1.38, 0.12, 0.08), fuelFillMat);
+    fuelBarGroup.add(bgBar, fuelFill);
+    fuelBarGroup.visible = false;
+    group.add(fuelBarGroup);
 
     const safeR = Number(this.tuning.safe_radius || 6.0);
     const ringMat = new THREE.MeshBasicMaterial({
@@ -1199,17 +1447,16 @@ class AnimeThreeIslandsApp {
 
     group.position.set(lData.pos[0], lData.pos[1], lData.pos[2]);
     this.scene.add(group);
-    return { group, coreMat, ringMat, ringMesh, light };
+    return { group, core, coreMat, roof, tearGroup, fuelBarGroup, fuelFill, fuelFillMat, ringMat, ringMesh, light };
   }
 
   _createMoteMesh(mData) {
-    // Memoria (HSR Memory Crystal): Faceted Octahedron Prism + Orbiting Memory Ring
     const group = new THREE.Group();
     const crystal = new THREE.Mesh(
       new THREE.OctahedronGeometry(0.28, 0),
-      new THREE.MeshBasicMaterial({ color: mData.kind === "dropped" ? PALETTE.LANTERN_LIT : PALETTE.MEMORIA_CYAN })
+      new THREE.MeshBasicMaterial({ color: mData.kind === "dropped" ? PALETTE.LANTERN_LIT : PALETTE.CRYSTAL_CYAN })
     );
-    addAnimeOutline(crystal, 1.18, PALETTE.MEMORIA_VIOLET);
+    addAnimeOutline(crystal, 1.18, PALETTE.CRYSTAL_VIOLET);
 
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.42, 0.03, 6, 18),
@@ -1222,16 +1469,17 @@ class AnimeThreeIslandsApp {
   }
 
   _createShadeMesh(sData) {
+    const rimHex = this.settings.colorblind ? PALETTE.SHADE_RIM_CB : PALETTE.SHADE_RIM;
     const group = new THREE.Group();
     const bodyMat = toonMat(PALETTE.SHADE_BODY);
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 14), bodyMat);
     body.position.y = 0.72;
     body.scale.set(1, 1.18, 1);
-    addAnimeOutline(body, 1.1, PALETTE.SHADE_RIM);
+    const outline = addAnimeOutline(body, 1.1, rimHex);
     group.add(body);
 
     const eyeGeo = new THREE.SphereGeometry(0.09, 8, 8);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: PALETTE.SHADE_RIM });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: rimHex });
     const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
     eyeL.position.set(-0.2, 0.82, 0.54);
     const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
@@ -1251,9 +1499,21 @@ class AnimeThreeIslandsApp {
     stunRing.visible = false;
     group.add(stunRing);
 
+    // 3D Floating HP Bar above Shade
+    const hpBarGroup = new THREE.Group();
+    hpBarGroup.position.y = 1.95;
+    const hpBg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.96, 0.12, 0.04),
+      new THREE.MeshBasicMaterial({ color: 0x0e1430 })
+    );
+    const hpFillMat = new THREE.MeshBasicMaterial({ color: rimHex });
+    const hpFill = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.08, 0.06), hpFillMat);
+    hpBarGroup.add(hpBg, hpFill);
+    group.add(hpBarGroup);
+
     group.position.set(sData.pos[0], sData.pos[1], sData.pos[2]);
     this.scene.add(group);
-    return { group, body, bodyMat, stunRing };
+    return { group, body, bodyMat, eyeMat, outlineMat: outline.material, stunRing, hpBarGroup, hpFill, hpFillMat };
   }
 
   _createDrifterMesh(dData) {
@@ -1264,9 +1524,22 @@ class AnimeThreeIslandsApp {
     silk.position.y = 1.25;
     addAnimeOutline(silk, 1.07, PALETTE.GOLD_BORDER);
     group.add(silk);
+
+    // 3D Floating HP Bar above Drifter (Gió Lạc)
+    const hpBarGroup = new THREE.Group();
+    hpBarGroup.position.y = 2.15;
+    const hpBg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.96, 0.12, 0.04),
+      new THREE.MeshBasicMaterial({ color: 0x0e1430 })
+    );
+    const hpFillMat = new THREE.MeshBasicMaterial({ color: PALETTE.CRYSTAL_CYAN });
+    const hpFill = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.08, 0.06), hpFillMat);
+    hpBarGroup.add(hpBg, hpFill);
+    group.add(hpBarGroup);
+
     group.position.set(dData.pos[0], dData.pos[1], dData.pos[2]);
     this.scene.add(group);
-    return { group, silk, silkMat };
+    return { group, silk, silkMat, hpBarGroup, hpFill, hpFillMat };
   }
 
   _createCharmMesh(cData) {
@@ -1290,7 +1563,6 @@ class AnimeThreeIslandsApp {
     this.mayGroup.visible =
       this.sim.fall_wait_ticks === 0 && (this.sim.invuln_ticks <= 0 || Math.floor(elapsedSec * 18) % 2 === 0);
 
-    // Animate Evernight Run Cycle & Genshin Dash Pose
     this._animateCharacterRunAndDash(dt, elapsedSec);
 
     if (this.sim.charm_ticks > 0) {
@@ -1301,10 +1573,12 @@ class AnimeThreeIslandsApp {
       this.activeCharmMesh.visible = false;
     }
 
-    const carryRatio = p.carried / Math.max(1, Number(this.tuning.carry_capacity || 10));
+    const carryRatio = p.carried / Math.max(1, p.capacity);
     this.mayLight.intensity = 1.8 + carryRatio * 3.0;
 
-    // Sync Lanterns
+    // 1 Hz slow blink wave for low-fuel lanterns (fuel < 30)
+    const blink1Hz = 0.5 + 0.5 * Math.sin(elapsedSec * 2 * Math.PI);
+
     let litCount = 0;
     for (const l of this.sim.lanterns) {
       let entry = this.lanternMeshes.get(l.id);
@@ -1313,23 +1587,66 @@ class AnimeThreeIslandsApp {
         this.lanternMeshes.set(l.id, entry);
       }
       entry.group.position.set(l.pos[0], l.pos[1], l.pos[2]);
+
+      const fuelVal = l.lit ? round1(l.fuel_ticks / 60.0) : 0;
+      const isLowFuel = l.lit && l.fuel_ticks < 1800;
+
       if (l.lit) {
         litCount++;
-        entry.coreMat.color.setHex(PALETTE.LANTERN_CORE);
-        entry.coreMat.emissive.setHex(PALETTE.LANTERN_LIT);
-        entry.coreMat.emissiveIntensity = 1.6;
-        entry.ringMat.color.setHex(PALETTE.LANTERN_LIT);
-        entry.ringMat.opacity = 0.6;
-        entry.light.visible = true;
-        entry.light.intensity = 4.5;
+        // Full height (not squashed), no tear marks
+        entry.core.scale.set(1, 1, 1);
+        entry.roof.position.y = 4.1;
+        entry.tearGroup.visible = false;
+
+        entry.fuelBarGroup.visible = true;
+        entry.fuelBarGroup.lookAt(this.camera.position);
+        const ratio = Math.max(0.02, fuelVal / 100.0);
+        entry.fuelFill.scale.x = ratio;
+        entry.fuelFill.position.x = -0.69 * (1 - ratio);
+
+        if (isLowFuel) {
+          // 1 Hz slow blink & lose safe zone
+          const warnHex = this.settings.colorblind ? 0xffffff : PALETTE.UI_DANGER;
+          entry.fuelFillMat.color.setHex(warnHex);
+          entry.coreMat.color.setHex(PALETTE.LANTERN_LIT);
+          entry.coreMat.emissive.setHex(warnHex);
+          entry.coreMat.emissiveIntensity = 0.35 + 1.4 * blink1Hz;
+          entry.ringMat.color.setHex(warnHex);
+          entry.ringMat.opacity = 0.12 * blink1Hz;
+          entry.light.visible = true;
+          entry.light.intensity = 1.2 + 3.0 * blink1Hz;
+        } else {
+          entry.fuelFillMat.color.setHex(PALETTE.LANTERN_LIT);
+          entry.coreMat.color.setHex(PALETTE.LANTERN_CORE);
+          entry.coreMat.emissive.setHex(PALETTE.LANTERN_LIT);
+          entry.coreMat.emissiveIntensity = 1.6;
+          entry.ringMat.color.setHex(PALETTE.LANTERN_LIT);
+          entry.ringMat.opacity = 0.6;
+          entry.light.visible = true;
+          entry.light.intensity = 4.5;
+        }
       } else {
+        // TICKET-03 Part 6: Unlit lantern is squashed 20% vertically & shows torn paper marks!
+        entry.core.scale.set(1.06, 0.8, 1.06);
+        entry.roof.position.y = 3.88;
+        entry.tearGroup.visible = true;
+        entry.fuelBarGroup.visible = false;
+
         entry.coreMat.color.setHex(PALETTE.LANTERN_OFF);
         entry.coreMat.emissive.setHex(PALETTE.LANTERN_OFF);
-        entry.coreMat.emissiveIntensity = 0.2;
+        entry.coreMat.emissiveIntensity = 0.15;
         entry.ringMat.color.setHex(PALETTE.LANTERN_OFF);
-        entry.ringMat.opacity = 0.22;
+        entry.ringMat.opacity = 0.18;
         entry.light.intensity = 0;
         entry.light.visible = false;
+      }
+
+      // Update HUD Fuel Chip
+      const chip = document.getElementById(`lf-chip-${l.id}`);
+      const fill = document.getElementById(`lf-fill-${l.id}`);
+      if (chip && fill) {
+        fill.style.width = `${fuelVal}%`;
+        chip.classList.toggle("low-fuel", isLowFuel);
       }
     }
 
@@ -1338,7 +1655,7 @@ class AnimeThreeIslandsApp {
     this.ambientLight.intensity = 0.15 + 0.55 * progress;
     this.scene.fog.density = 0.02 - progress * 0.011;
 
-    // Sync Memoria Crystals (Motes)
+    // Sync Motes
     const activeMoteIds = new Set();
     for (const m of this.sim.motes) {
       activeMoteIds.add(m.id);
@@ -1360,7 +1677,8 @@ class AnimeThreeIslandsApp {
       }
     }
 
-    // Sync Shades
+    // Sync Shades (with Colorblind #00B3FF support & drain visual)
+    const rimHex = this.settings.colorblind ? PALETTE.SHADE_RIM_CB : PALETTE.SHADE_RIM;
     const activeShadeIds = new Set();
     for (const s of this.sim.shades) {
       activeShadeIds.add(s.id);
@@ -1370,10 +1688,22 @@ class AnimeThreeIslandsApp {
         this.shadeMeshes.set(s.id, entry);
       }
       entry.group.position.set(s.pos[0], s.pos[1], s.pos[2]);
+      entry.eyeMat.color.setHex(rimHex);
+      entry.outlineMat.color.setHex(rimHex);
+      if (entry.hpBarGroup) {
+        entry.hpBarGroup.lookAt(this.camera.position);
+        const hpRatio = Math.max(0.05, (typeof s._combatHp === "number" ? s._combatHp : 3) / 3.0);
+        entry.hpFill.scale.x = hpRatio;
+        entry.hpFill.position.x = -0.46 * (1 - hpRatio);
+        entry.hpFillMat.color.setHex(rimHex);
+      }
       if (s.state === "stunned") {
         entry.stunRing.visible = true;
         entry.stunRing.rotation.y = elapsedSec * 5;
         entry.bodyMat.color.setHex(PALETTE.SHADE_STUN);
+      } else if (s.state === "drain") {
+        entry.stunRing.visible = false;
+        entry.bodyMat.color.setHex(0x4a154b);
       } else {
         entry.stunRing.visible = false;
         entry.bodyMat.color.setHex(PALETTE.SHADE_BODY);
@@ -1398,6 +1728,12 @@ class AnimeThreeIslandsApp {
       }
       entry.group.position.set(d.pos[0], d.pos[1], d.pos[2]);
       entry.silk.rotation.y = elapsedSec * 3.5;
+      if (entry.hpBarGroup) {
+        entry.hpBarGroup.lookAt(this.camera.position);
+        const hpRatio = Math.max(0.05, (typeof d._combatHp === "number" ? d._combatHp : 3) / 3.0);
+        entry.hpFill.scale.x = hpRatio;
+        entry.hpFill.position.x = -0.46 * (1 - hpRatio);
+      }
     }
     for (const [id, entry] of this.drifterMeshes.entries()) {
       if (!activeDrifterIds.has(id)) {
@@ -1406,7 +1742,6 @@ class AnimeThreeIslandsApp {
       }
     }
 
-    // Sync Wind Charms
     for (const c of this.sim.charms) {
       let entry = this.charmMeshes.get(c.id);
       if (!entry) {
@@ -1417,10 +1752,8 @@ class AnimeThreeIslandsApp {
       entry.card.rotation.y = elapsedSec * 2.5;
     }
 
-    // Update Floor Vandal Magazines
     this._updateFloorMagazines(dt, elapsedSec);
 
-    // Camera Positioning: First-Person (FPS) vs Third-Person (TPS)
     const yawRad = (this.camYawDeg * Math.PI) / 180.0;
     if (this.firstPerson) {
       const speedXZ = Math.hypot(p.vel[0], p.vel[2]);
@@ -1445,7 +1778,7 @@ class AnimeThreeIslandsApp {
 
   _updateHUD(litCount) {
     const p = this.sim.player;
-    const cap = Number(this.tuning.carry_capacity || 10);
+    const cap = p.capacity;
 
     document.querySelectorAll("#flames-container .flame-pip").forEach((el, idx) => {
       el.classList.toggle("lost", idx >= p.flames);
@@ -1462,8 +1795,10 @@ class AnimeThreeIslandsApp {
     const mm = String(Math.floor(rem / 60)).padStart(2, "0");
     const ss = String(rem % 60).padStart(2, "0");
     const timerEl = document.getElementById("timer-display");
-    timerEl.textContent = `${mm}:${ss}`;
-    timerEl.classList.toggle("danger", rem <= 30 && this.sim.state === "playing");
+    const isDanger = rem <= 30 && this.sim.state === "playing";
+    const warnPrefix = isDanger && this.settings.colorblind ? "⚠ " : "";
+    timerEl.textContent = `${warnPrefix}${mm}:${ss}`;
+    timerEl.classList.toggle("danger", isDanger);
     if (rem <= 10 && rem > 0 && rem !== this.lastCountdownSec && this.sim.state === "playing") {
       this.lastCountdownSec = rem;
       this.audio.playCountdownTick();
@@ -1477,19 +1812,40 @@ class AnimeThreeIslandsApp {
       (this.currentNight === 3 ? this.sim.score : this.wonNightScores[3]);
     document.getElementById("total-score-display").textContent = totalCampaign;
 
+    // Dynamic Capacity Firefly Bar (10 + 2 * successful_lights, up to 20)
     document.getElementById("carried-text").textContent = `${p.carried}/${cap}`;
-    document.querySelectorAll("#motes-pills .mote-slot").forEach((el, idx) => {
+    const pillsContainer = document.getElementById("motes-pills");
+    while (pillsContainer.children.length < cap) {
+      const div = document.createElement("div");
+      div.className = "mote-slot";
+      pillsContainer.appendChild(div);
+    }
+    while (pillsContainer.children.length > cap) {
+      pillsContainer.removeChild(pillsContainer.lastChild);
+    }
+    Array.from(pillsContainer.children).forEach((el, idx) => {
       el.classList.toggle("filled", idx < p.carried);
     });
 
     const interactR = Number(this.tuning.interact_radius || 2.0);
     const nearLantern = this.sim.lanterns
-      .filter((l) => !l.lit && distXZ(p.pos, l.pos) <= interactR + 0.25 && Math.abs(p.pos[1] - l.pos[1]) <= 2.0)
+      .filter(
+        (l) =>
+          (!l.lit || (l.lit && l.fuel_ticks < 6000)) &&
+          distXZ(p.pos, l.pos) <= interactR + 0.25 &&
+          Math.abs(p.pos[1] - l.pos[1]) <= 2.0
+      )
       .sort((a, b) => distXZ(p.pos, a.pos) - distXZ(p.pos, b.pos))[0];
 
     const promptEl = document.getElementById("context-prompt");
     if (nearLantern) {
-      promptEl.textContent = `E — Nạp ánh sáng (${nearLantern.deposited}/10)`;
+      if (!nearLantern.lit) {
+        const req = nearLantern.ever_lit ? 5 : 10;
+        promptEl.textContent = `E — Nạp ánh sáng (${nearLantern.deposited}/${req})`;
+      } else {
+        const fuelVal = round1(nearLantern.fuel_ticks / 60.0);
+        promptEl.textContent = `E — Châm dầu đèn ${nearLantern.id} (Dầu: ${fuelVal}/100)`;
+      }
       promptEl.classList.add("visible");
     } else {
       promptEl.classList.remove("visible");
@@ -1539,14 +1895,14 @@ class AnimeThreeIslandsApp {
 
   _updateOffscreenLanternArrow() {
     const arrowEl = document.getElementById("offscreen-arrow");
-    const unlit = this.sim.lanterns.filter((l) => !l.lit);
-    if (unlit.length === 0) {
+    const needy = this.sim.lanterns.filter((l) => !l.lit || l.fuel_ticks < 1800);
+    if (needy.length === 0) {
       arrowEl.classList.add("hidden");
       return;
     }
     const p = this.sim.player;
-    unlit.sort((a, b) => distXZ(p.pos, a.pos) - distXZ(p.pos, b.pos));
-    const target = unlit[0];
+    needy.sort((a, b) => distXZ(p.pos, a.pos) - distXZ(p.pos, b.pos));
+    const target = needy[0];
     const worldPos = new THREE.Vector3(target.pos[0], target.pos[1] + 2.5, target.pos[2]);
     const ndc = worldPos.clone().project(this.camera);
 
@@ -1577,12 +1933,17 @@ class AnimeThreeIslandsApp {
         this.audio.playMotePickup(ev.data.carried);
       } else if (ev.name === "charm_picked") {
         this.audio.playCharmPickup();
-        this._showAnimeBanner("BÙA GIÓ KHAI MỞ!", "TỐC ĐỘ 7.2 M/S · LƯỚT GENSHIN KHÔNG HỒI CHIÊU");
-      } else if (ev.name === "deposit") {
+        this._showAnimeBanner("BÙA GIÓ KHAI MỞ!", "TỐC ĐỘ 7.2 M/S · LƯỚT GIÓ KHÔNG HỒI CHIÊU");
+      } else if (ev.name === "deposit" || ev.name === "refuel") {
         this.audio.playDeposit();
       } else if (ev.name === "lantern_lit") {
         this.audio.playLanternLit();
-        this._showAnimeBanner(`ĐÈN LỒNG ${ev.data.lantern_id} BỪNG SÁNG!`, "VÙNG AN TOÀN 6M ĐÃ KÍCH HOẠT");
+        const tag = ev.data.relight ? "THẮP LẠI THÀNH CÔNG (+40Đ)" : "KHAI SÁNG LẦN ĐẦU (+100Đ)";
+        this._showAnimeBanner(`ĐÈN LỒNG ${ev.data.lantern_id} BỪNG SÁNG!`, `${tag} · SỨC CHỨA: ${this.sim.player.capacity}`);
+      } else if (ev.name === "lantern_out") {
+        this.audio.playHit();
+        const prefix = this.settings.colorblind ? "⚠ " : "";
+        this._showAnimeBanner(`${prefix}ĐÈN LỒNG ${ev.data.lantern_id} ĐÃ CẠN DẦU!`, "CHỈ CẦN 5 ĐOM ĐÓM ĐỂ THẮP LẠI");
       } else if (ev.name === "pulse") {
         this.audio.playPulse();
         anime({
@@ -1594,7 +1955,7 @@ class AnimeThreeIslandsApp {
         });
       } else if (ev.name === "dash") {
         this.audio.playDash();
-        this._triggerGenshinDashAnim();
+        this._triggerWindDashAnim();
       } else if (ev.name === "jump") {
         this.audio.playJump(Boolean(ev.data && ev.data.pad));
       } else if (ev.name === "shade_spawned") {
@@ -1603,16 +1964,19 @@ class AnimeThreeIslandsApp {
         this.audio.playWindWarning();
       } else if (ev.name === "drifter_steal") {
         this.audio.playHit();
-        this._showAnimeBanner("GIÓ LẠC CƯỚP MEMORIA!", "BẮN VANDAL HOẶC TỎA SÁNG [R] ĐỂ ĐÁNH RƠI LẠI!");
+        this._showAnimeBanner("GIÓ LẠC CƯỚP ĐOM ĐÓM!", "BẮN QUANG TIỄN HOẶC TỎA SÁNG [R] ĐỂ ĐÁNH RƠI LẠI!");
       } else if (ev.name === "drifter_drop") {
         this.audio.playCharmPickup();
       } else if (ev.name === "player_hit") {
         this.audio.playHit();
       } else if (ev.name === "paused") {
+        this._unlockCursor();
         document.getElementById("pause-modal").classList.remove("hidden");
       } else if (ev.name === "resumed") {
+        this._lockCursor();
         document.getElementById("pause-modal").classList.add("hidden");
       } else if (ev.name === "game_over") {
+        this._unlockCursor();
         const won = ev.data.result === "won";
         if (won) this.wonNightScores[this.currentNight] = this.sim.score;
         this.audio.playGameOver(won);
@@ -1654,24 +2018,24 @@ class AnimeThreeIslandsApp {
 
     const nextBtn = document.getElementById("btn-next-night");
     if (won && this.currentNight < 3) {
-      document.getElementById("go-subtitle").textContent = `HOÀN THÀNH ĐÊM ${this.currentNight}`;
-      document.getElementById("go-title").textContent = "HÒN ĐẢO ĐÃ BỪNG SÁNG!";
+      document.getElementById("go-subtitle").textContent = `BÌNH MINH ĐÊM ${this.currentNight} (${reason})`;
+      document.getElementById("go-title").textContent = "GIỮ ĐẢO SÁNG THÀNH CÔNG!";
       document.getElementById("go-desc").textContent =
-        `"Giỏi lắm Evernight! Toàn bộ Đèn Lồng trên đảo đã được nạp đầy Memoria. Hãy chuẩn bị bước sang Đêm ${this.currentNight + 1} nhé!"`;
+        `"Giỏi lắm cháu Mây! Đảo đã giữ được ánh sáng tới tận bình minh. Hãy chuẩn bị bước sang Đêm ${this.currentNight + 1} nhé!"`;
       nextBtn.classList.remove("hidden");
       nextBtn.textContent = `➡ Sang Đêm ${this.currentNight + 1}`;
     } else if (won && this.currentNight === 3) {
       document.getElementById("go-subtitle").textContent = "BÌNH MINH TRÊN QUẦN ĐẢO ĐÈN LỒNG";
       document.getElementById("go-title").textContent = "🌅 BÌNH MINH RỰC RỠ!";
       document.getElementById("go-desc").textContent =
-        `"Cả ba hòn đảo Đảo Bến, Đảo Cau và Đảo Chuông đã bừng sáng! Sương đen tan biến hoàn toàn trước ánh bình minh!"`;
+        `"Cả ba hòn đảo Đảo Bến, Đảo Cau và Đảo Chuông đã vượt qua đêm dài! Sương đen tan biến hoàn toàn trước ánh bình minh!"`;
       nextBtn.classList.add("hidden");
     } else {
       document.getElementById("go-subtitle").textContent = `THẤT BẠI · ĐÊM ${this.currentNight}`;
       document.getElementById("go-title").textContent =
-        reason === "dawn" ? "BÌNH MINH ĐÃ QUA..." : "NGỌN LỬA ĐÃ TẮT...";
+        reason === "dawn" ? "KHÔNG ĐỦ ĐÈN SÁNG LÚC BÌNH MINH..." : "NGỌN LỬA ĐÃ TẮT...";
       document.getElementById("go-desc").textContent =
-        `"Đừng nản lòng Evernight! Hãy nạp lại băng đạn Vandal và thử lại Đêm ${this.currentNight} một lần nữa!"`;
+        `"Đừng nản lòng cháu Mây! Hãy châm dầu đều cho các Đèn Lồng và thử lại Đêm ${this.currentNight} một lần nữa!"`;
       nextBtn.classList.add("hidden");
     }
   }
@@ -1679,20 +2043,22 @@ class AnimeThreeIslandsApp {
   selectNight(night, showIntro = true) {
     this.currentNight = Number(night) || 1;
     this.sim = new GameSimulationJS(this.tuning, 2026 + this.currentNight, this.currentNight);
-    this.vandalClip = 25;
-    this.vandalReserve = 75;
-    this._updateVandalHUD();
+    this.rifleClip = 25;
+    this.rifleReserve = 75;
+    this._updateRifleHUD();
     this._rebuildNightWorld(this.currentNight);
     this._syncEntities(0, 0.016);
     document.getElementById("gameover-modal").classList.add("hidden");
     document.getElementById("pause-modal").classList.add("hidden");
     if (showIntro) {
+      this._unlockCursor();
       this.started = false;
       document.getElementById("intro-modal").classList.remove("hidden");
       this._playIntroAnime();
     } else {
       this.started = true;
       document.getElementById("intro-modal").classList.add("hidden");
+      this._lockCursor();
     }
   }
 
@@ -1700,6 +2066,7 @@ class AnimeThreeIslandsApp {
     this.started = true;
     this.audio.startBGM();
     document.getElementById("intro-modal").classList.add("hidden");
+    this._lockCursor();
   }
 
   toggleBot(force = null) {
@@ -1711,7 +2078,9 @@ class AnimeThreeIslandsApp {
 
   _computeBotInput() {
     const p = this.sim.player;
-    const closeShade = this.sim.shades.find((s) => s.state !== "stunned" && distXZ(p.pos, s.pos) <= 4.0);
+    const closeShade = this.sim.shades.find(
+      (s) => s.state !== "stunned" && (distXZ(p.pos, s.pos) <= 4.0 || (s.state === "drain" && distXZ(p.pos, s.pos) <= 4.8))
+    );
     const stolenDrifter = this.sim.drifters.find(
       (d) => d.state !== "removed" && distXZ(p.pos, d.pos) <= 4.5 && (d.state === "chase" || d.stolen > 0)
     );
@@ -1719,16 +2088,16 @@ class AnimeThreeIslandsApp {
       (closeShade || stolenDrifter) && p.carried >= 3 && this.sim.pulse_cd_ticks === 0 && !this.sim.input_state.pulse
     );
 
-    const unlit = this.sim.lanterns.filter((l) => !l.lit);
-    const nearLantern = unlit.find((l) => distXZ(p.pos, l.pos) <= 1.85 && Math.abs(p.pos[1] - l.pos[1]) <= 1.8);
+    const needyLanterns = this.sim.lanterns.filter((l) => !l.lit || l.fuel_ticks < 3600);
+    const nearLantern = needyLanterns.find((l) => distXZ(p.pos, l.pos) <= 1.85 && Math.abs(p.pos[1] - l.pos[1]) <= 1.8);
     const wantInteract = Boolean(nearLantern && p.carried > 0 && !this.sim.input_state.interact);
 
     let targetPos = [0, 0, 0];
-    if (unlit.length > 0) {
-      unlit.sort((a, b) => distXZ(p.pos, a.pos) - distXZ(p.pos, b.pos));
-      const nextL = unlit[0];
-      const need = 10 - nextL.deposited;
-      if (p.carried >= need || p.carried >= 10 || this.sim.motes.length === 0) {
+    if (needyLanterns.length > 0) {
+      needyLanterns.sort((a, b) => a.fuel_ticks - b.fuel_ticks || distXZ(p.pos, a.pos) - distXZ(p.pos, b.pos));
+      const nextL = needyLanterns[0];
+      const need = !nextL.lit ? (nextL.ever_lit ? 5 : 10) - nextL.deposited : Math.ceil((6000 - nextL.fuel_ticks) / 600);
+      if (p.carried >= Math.min(need, 5) || p.carried >= p.capacity || this.sim.motes.length === 0) {
         targetPos = nextL.pos;
       } else {
         const sameTierMotes = this.sim.motes.filter((m) => Math.abs(m.pos[1] - p.pos[1]) <= 1.5);
@@ -1753,9 +2122,8 @@ class AnimeThreeIslandsApp {
       this.camYawDeg = (Math.atan2(vx, vz) * 180.0) / Math.PI;
     }
 
-    // Bot automatically fires Vandal at nearby active shades
     if (this.sim.shades.some((s) => s.state !== "stunned" && distXZ(p.pos, s.pos) <= 14.0)) {
-      this._shootVandal();
+      this._shootRifle();
     }
 
     const theta = (this.camYawDeg * Math.PI) / 180.0;
@@ -1789,6 +2157,13 @@ class AnimeThreeIslandsApp {
     document.getElementById("val-volume").textContent = `${this.settings.volume}%`;
     document.getElementById("input-sens").value = this.settings.mouseSens;
     document.getElementById("val-sens").textContent = `${(this.settings.mouseSens / 100).toFixed(1)}x`;
+    document.getElementById("input-colorblind").checked = Boolean(this.settings.colorblind);
+    document.body.classList.toggle("colorblind-mode", Boolean(this.settings.colorblind));
+    const cbBtn = document.getElementById("btn-colorblind");
+    if (cbBtn) {
+      cbBtn.textContent = this.settings.colorblind ? "👁 Mù Màu: BẬT" : "👁 Mù Màu: TẮT";
+      cbBtn.classList.toggle("active", Boolean(this.settings.colorblind));
+    }
     this.audio.setVolume(this.settings.volume / 100);
   }
 
@@ -1808,20 +2183,26 @@ class AnimeThreeIslandsApp {
       if (code === "ShiftLeft" || code === "ShiftRight") this.pendingDash = true;
       if (code === "Escape" || code === "KeyP") this.pendingPause = true;
       if (code === "KeyV") this.toggleCameraMode();
-      if (code === "KeyG") this._reloadVandal();
-      if (code === "KeyB") this._shootVandal();
+      if (code === "KeyG") this._reloadRifle();
+      if (code === "KeyB") this._shootRifle();
     });
 
     window.addEventListener("keyup", (e) => {
       this.keys[e.code] = false;
     });
 
+    // Pointer Lock (Cursor.lockState = CursorLockMode.Locked) + Fallback Drag Look
     let dragging = false;
     let lastX = 0;
     let lastY = 0;
-    this.renderer.domElement.addEventListener("mousedown", (e) => {
-      if (e.button === 0) {
-        this._shootVandal();
+    const canvas = this.renderer.domElement;
+
+    canvas.addEventListener("mousedown", (e) => {
+      if (this.started && this.sim.state === "playing") {
+        this._lockCursor();
+        if (e.button === 0) {
+          this._shootRifle();
+        }
       }
       dragging = true;
       lastX = e.clientX;
@@ -1831,18 +2212,24 @@ class AnimeThreeIslandsApp {
       dragging = false;
     });
     window.addEventListener("mousemove", (e) => {
-      if (dragging) {
-        const dx = e.clientX - lastX;
-        const dy = e.clientY - lastY;
+      const isLocked = document.pointerLockElement === canvas;
+      if (isLocked || dragging) {
+        const dx = isLocked ? e.movementX : e.clientX - lastX;
+        const dy = isLocked ? e.movementY : e.clientY - lastY;
         lastX = e.clientX;
         lastY = e.clientY;
-        const sens = (this.settings.mouseSens / 100) * 0.45;
+        const sens = (this.settings.mouseSens / 100) * 0.35;
         this.camYawDeg = (this.camYawDeg - dx * sens) % 360;
-        this.fpsPitch = Math.max(-0.55, Math.min(0.55, this.fpsPitch - dy * 0.004));
+        this.fpsPitch = Math.max(-0.55, Math.min(0.55, this.fpsPitch - dy * 0.0035 * (this.settings.mouseSens / 100)));
       }
     });
 
     document.getElementById("btn-cam-mode").addEventListener("click", () => this.toggleCameraMode());
+    document.getElementById("btn-colorblind").addEventListener("click", () => {
+      this.settings.colorblind = !this.settings.colorblind;
+      this._applySettingsToUI();
+      saveSettings(this.settings);
+    });
     document.getElementById("btn-start-game").addEventListener("click", () => this.startGame());
     document.getElementById("btn-play-again").addEventListener("click", () => this.selectNight(this.currentNight, false));
     document.getElementById("btn-next-night").addEventListener("click", () => {
@@ -1869,7 +2256,10 @@ class AnimeThreeIslandsApp {
     document.getElementById("btn-pause-restart").addEventListener("click", () => this.selectNight(this.currentNight, false));
     document.getElementById("btn-pause-menu").addEventListener("click", () => this.selectNight(this.currentNight, true));
 
-    const openSettings = () => document.getElementById("settings-modal").classList.remove("hidden");
+    const openSettings = () => {
+      this._unlockCursor();
+      document.getElementById("settings-modal").classList.remove("hidden");
+    };
     document.getElementById("btn-open-settings").addEventListener("click", openSettings);
     document.getElementById("btn-pause-settings").addEventListener("click", openSettings);
     document.getElementById("input-volume").addEventListener("input", (e) => {
@@ -1879,6 +2269,11 @@ class AnimeThreeIslandsApp {
     });
     document.getElementById("input-sens").addEventListener("input", (e) => {
       this.settings.mouseSens = Number(e.target.value);
+      this._applySettingsToUI();
+      saveSettings(this.settings);
+    });
+    document.getElementById("input-colorblind").addEventListener("change", (e) => {
+      this.settings.colorblind = Boolean(e.target.checked);
       this._applySettingsToUI();
       saveSettings(this.settings);
     });

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Đảo Đèn Lồng — Evernight HSR · Vandal FPS · Memoria Edition (Contract v1.1)</title>
+  <title>Đảo Đèn Lồng — Đèn Cạn Dầu (Phase 3 · Contract v1.2)</title>
   <style>
     :root {
       --night-sky: #0E1430;
@@ -28,6 +28,10 @@
       --ui-text: #F5F1E6;
       --panel-bg: rgba(14, 20, 48, 0.84);
     }
+    body.colorblind-mode {
+      --shade-rim: #00B3FF;
+      --ui-danger: #FFFFFF;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     html, body {
       width: 100%; height: 100%; overflow: hidden;
@@ -43,13 +47,12 @@
       position: fixed; inset: 0; pointer-events: none; z-index: 2;
       background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(10, 14, 34, 0.68) 100%);
     }
-    /* Genshin Elemental Dash Screen Speed-Lines FX */
-    #genshin-dash-fx {
+    #wind-dash-fx {
       position: fixed; inset: 0; pointer-events: none; z-index: 3;
       background: radial-gradient(circle at 50% 50%, transparent 45%, rgba(125, 249, 255, 0.28) 82%, rgba(242, 193, 78, 0.45) 100%);
       opacity: 0;
     }
-    /* Valorant FPS Crosshair & Hitmarker */
+    /* FPS Crosshair & Hitmarker */
     #fps-crosshair {
       position: fixed; left: 50%; top: 50%;
       width: 28px; height: 28px;
@@ -115,7 +118,6 @@
       box-shadow: 0 8px 26px rgba(0, 0, 0, 0.48);
       pointer-events: auto;
     }
-    /* Top-Left: Flames & Character Title */
     #hud-top-left {
       position: fixed; top: 16px; left: 22px;
       display: flex; flex-direction: column; gap: 6px;
@@ -144,10 +146,9 @@
       padding: 3px 10px; border-radius: 999px;
       margin-top: 2px;
     }
-    /* Top-Center: Clock mm:ss */
     #hud-top-center {
       position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-      text-align: center; min-width: 140px;
+      text-align: center; min-width: 155px;
     }
     .clock-label {
       font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #b9c2e0;
@@ -165,13 +166,12 @@
       from { opacity: 1; transform: scale(1.06); }
       to { opacity: 0.38; transform: scale(0.96); }
     }
-    /* Top-Right: Lanterns k/n & Score */
     #hud-top-right {
       position: fixed; top: 16px; right: 22px;
       display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
     }
     .top-right-stats {
-      display: flex; align-items: center; gap: 20px;
+      display: flex; align-items: center; gap: 18px;
     }
     .stat-box {
       display: flex; flex-direction: column; align-items: flex-end;
@@ -180,11 +180,43 @@
       font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #b9c2e0;
     }
     .stat-num {
-      font-size: 24px; font-weight: 900; color: var(--gold-border);
+      font-size: 23px; font-weight: 900; color: var(--gold-border);
       font-variant-numeric: tabular-nums;
     }
+    /* Lantern Fuel Bars Row in Top-Right HUD */
+    #lantern-fuel-row {
+      display: flex; gap: 6px; align-items: center;
+    }
+    .lf-chip {
+      width: 44px; background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(242, 193, 78, 0.4);
+      border-radius: 6px; padding: 3px 4px;
+      display: flex; flex-direction: column; gap: 2px;
+      font-size: 10px; font-weight: 800; text-align: center;
+    }
+    .lf-chip.low-fuel {
+      border-color: var(--ui-danger);
+      color: var(--ui-danger);
+      animation: blink1Hz 1s infinite;
+    }
+    @keyframes blink1Hz {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.32; }
+    }
+    .lf-bar-bg {
+      width: 100%; height: 5px; background: rgba(0, 0, 0, 0.5);
+      border-radius: 3px; overflow: hidden;
+    }
+    .lf-bar-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #FFB347, #FFE9B0);
+      transition: width 0.15s;
+    }
+    .lf-chip.low-fuel .lf-bar-fill {
+      background: var(--ui-danger);
+    }
     .btn-row {
-      display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
+      display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;
     }
     .anime-btn {
       cursor: pointer;
@@ -192,38 +224,38 @@
       border: 1px solid var(--gold-border);
       color: var(--ui-text);
       font-weight: 700; font-size: 11px;
-      padding: 5px 10px; border-radius: 8px;
+      padding: 5px 9px; border-radius: 8px;
       transition: all 0.16s;
     }
     .anime-btn:hover, .anime-btn.active {
       background: var(--gold-border);
       color: #0E1430;
     }
-    /* Bottom-Left: Vandal Weapon & Magazine Ammo Counter */
+    /* Bottom-Left: Light Rifle & Floor Magazine Counter */
     #hud-bottom-left {
       position: fixed; bottom: 16px; left: 22px;
       display: flex; flex-direction: column; gap: 3px;
       width: 245px;
     }
-    .vandal-header {
+    .rifle-header {
       display: flex; justify-content: space-between; align-items: center;
-      font-size: 11px; font-weight: 900; letter-spacing: 1.5px;
-      color: #ff4655; text-transform: uppercase;
+      font-size: 11px; font-weight: 900; letter-spacing: 1.2px;
+      color: var(--gold-border); text-transform: uppercase;
     }
-    .vandal-ammo-row {
+    .rifle-ammo-row {
       display: flex; align-items: baseline; gap: 8px;
     }
-    #vandal-clip {
-      font-size: 30px; font-weight: 900; color: var(--ui-text);
+    #rifle-clip {
+      font-size: 28px; font-weight: 900; color: var(--ui-text);
       font-variant-numeric: tabular-nums;
     }
-    #vandal-reserve {
-      font-size: 18px; font-weight: 800; color: var(--gold-border);
+    #rifle-reserve {
+      font-size: 17px; font-weight: 800; color: var(--gold-border);
     }
-    .vandal-mags-info {
+    .rifle-mags-info {
       font-size: 11px; color: #b9c2e0; font-weight: 700;
     }
-    /* Bottom-Center: 10-slot Memoria Bar & Prompt */
+    /* Bottom-Center: Firefly Capacity Bar & Prompt */
     #hud-bottom-center {
       position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
       display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -243,25 +275,25 @@
       opacity: 1; transform: translateY(0);
     }
     .mote-bar-header {
-      font-size: 11px; font-weight: 800; color: #a8e6ff;
+      font-size: 11px; font-weight: 800; color: var(--mote-halo);
       margin-bottom: 5px; text-align: center; letter-spacing: 0.8px;
     }
     .mote-slots-10 {
-      display: flex; gap: 6px; align-items: center;
+      display: flex; gap: 5px; align-items: center; flex-wrap: wrap; justify-content: center;
+      max-width: 340px;
     }
     .mote-slot {
-      width: 22px; height: 22px; border-radius: 6px;
+      width: 20px; height: 20px; border-radius: 5px;
       background: rgba(255, 255, 255, 0.08);
-      border: 1.5px solid rgba(168, 230, 255, 0.45);
+      border: 1.5px solid rgba(242, 193, 78, 0.45);
       transition: all 0.18s;
     }
     .mote-slot.filled {
-      background: radial-gradient(circle, #ffffff 20%, #7df9ff 65%, #b86bff 100%);
+      background: radial-gradient(circle, var(--mote-core) 25%, var(--mote-halo) 95%);
       border-color: #ffffff;
-      box-shadow: 0 0 12px #7df9ff;
-      transform: scale(1.08);
+      box-shadow: 0 0 10px var(--mote-halo);
+      transform: scale(1.06);
     }
-    /* Bottom-Right: Cooldown Icons for Genshin Dash & Pulse */
     #hud-bottom-right {
       position: fixed; bottom: 16px; right: 22px;
       display: flex; gap: 12px;
@@ -282,7 +314,6 @@
     .cd-key { font-size: 10px; font-weight: 800; color: var(--gold-border); }
     .cd-name { font-size: 12px; font-weight: 900; margin: 2px 0; }
     .cd-timer { font-size: 11px; font-weight: 800; color: var(--mote-halo); }
-    /* Center Anime Banner */
     #anime-banner {
       position: fixed; top: 24%; left: 50%;
       transform: translate(-50%, -50%) scale(0.85);
@@ -300,7 +331,6 @@
       font-size: 25px; font-weight: 900; color: var(--ui-text);
       text-shadow: 0 0 16px var(--lantern-lit);
     }
-    /* Modals */
     .overlay-modal {
       position: fixed; inset: 0; z-index: 20;
       background: radial-gradient(circle at 50% 45%, rgba(27, 35, 80, 0.88), rgba(10, 14, 34, 0.96));
@@ -354,16 +384,17 @@
       margin: 14px 0; font-size: 14px; font-weight: 700;
     }
     .settings-row input[type="range"] { width: 200px; accent-color: var(--gold-border); }
+    .settings-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--gold-border); }
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div id="canvas-container"></div>
   <div class="vignette"></div>
-  <div id="genshin-dash-fx"></div>
+  <div id="wind-dash-fx"></div>
   <div id="screen-pulse-ring"></div>
 
-  <!-- Valorant FPS Crosshair & Hitmarker -->
+  <!-- FPS Crosshair & Hitmarker -->
   <div id="fps-crosshair">
     <div class="ch-line ch-top"></div>
     <div class="ch-line ch-bot"></div>
@@ -383,8 +414,8 @@
   <!-- Wind Warning Indicator (Night 3) -->
   <div id="wind-indicator" class="hidden">🍃 Gió mạnh sắp thổi! Hãy giữ vững bước chân!</div>
 
-  <!-- Off-screen Arrow pointing to nearest unlit lantern -->
-  <div id="offscreen-arrow" class="hidden" title="Hướng tới Đèn Lồng chưa sáng gần nhất">
+  <!-- Off-screen Arrow pointing to nearest unlit or low-fuel lantern -->
+  <div id="offscreen-arrow" class="hidden" title="Hướng tới Đèn Lồng cần thắp/châm dầu gần nhất">
     <svg width="36" height="36" viewBox="0 0 40 40">
       <polygon points="20,2 35,34 20,26 5,34" fill="#F2C14E" stroke="#0E1430" stroke-width="2.5" />
     </svg>
@@ -398,9 +429,9 @@
 
   <!-- Main HUD -->
   <div id="hud">
-    <!-- Top-Left: Flames & Evernight Title -->
+    <!-- Top-Left: Flames -->
     <div id="hud-top-left" class="anime-card">
-      <div class="night-badge" id="hud-night-label">ĐÊM 1 · ĐẢO BẾN · EVERNIGHT (HSR)</div>
+      <div class="night-badge" id="hud-night-label">ĐÊM 1 · ĐẢO BẾN · MÂY</div>
       <div class="flames-row" id="flames-container">
         <span class="flame-pip"></span>
         <span class="flame-pip"></span>
@@ -411,15 +442,15 @@
 
     <!-- Top-Center: Clock mm:ss -->
     <div id="hud-top-center" class="anime-card">
-      <div class="clock-label">Trước Bình Minh</div>
-      <div id="timer-display">05:00</div>
+      <div class="clock-label">Giữ Đảo Sáng Tới Bình Minh</div>
+      <div id="timer-display">04:00</div>
     </div>
 
-    <!-- Top-Right: Lanterns k/n & Score & Camera Mode Toggle -->
+    <!-- Top-Right: Lanterns k/n, Fuel Bars & Score -->
     <div id="hud-top-right" class="anime-card">
       <div class="top-right-stats">
         <div class="stat-box">
-          <span class="stat-label">Đèn Lồng</span>
+          <span class="stat-label">Đèn Sáng (Cần ≥60%)</span>
           <span class="stat-num" id="lanterns-text">0/5</span>
         </div>
         <div class="stat-box">
@@ -427,8 +458,11 @@
           <span class="stat-num"><span id="score-display">0</span> <small style="font-size:13px;opacity:0.8;">(<span id="total-score-display">0</span>)</small></span>
         </div>
       </div>
+      <!-- Live Fuel Bars for All Lanterns -->
+      <div id="lantern-fuel-row"></div>
       <div class="btn-row">
-        <button class="anime-btn active" id="btn-cam-mode" title="Phím [V]: Đổi góc nhìn First-Person (FPS) / Third-Person (TPS)">🎥 Góc Nhìn: FPS (1st) [V]</button>
+        <button class="anime-btn active" id="btn-cam-mode" title="Phím [V]: Đổi góc nhìn First-Person / Third-Person">🎥 Góc Nhìn: FPS (1st) [V]</button>
+        <button class="anime-btn" id="btn-colorblind" title="Chế độ mù màu: Bảng màu dễ phân biệt">👁 Mù Màu: TẮT</button>
         <button class="anime-btn" id="btn-night-1">Đêm 1</button>
         <button class="anime-btn" id="btn-night-2">Đêm 2</button>
         <button class="anime-btn" id="btn-night-3">Đêm 3</button>
@@ -437,28 +471,28 @@
       </div>
     </div>
 
-    <!-- Bottom-Left: Vandal Assault Rifle & Floor Magazines -->
+    <!-- Bottom-Left: Light Rifle & Floor Magazines -->
     <div id="hud-bottom-left" class="anime-card">
-      <div class="vandal-header">
-        <span>🔫 VANDAL (VALORANT)</span>
-        <span id="vandal-state-badge" style="color:#00ffcc;">SẴN SÀNG</span>
+      <div class="rifle-header">
+        <span>🔫 QUANG TIỄN (SÚNG ÁNH SÁNG)</span>
+        <span id="rifle-state-badge" style="color:#00ffcc;">SẴN SÀNG</span>
       </div>
-      <div class="vandal-ammo-row">
-        <span id="vandal-clip">25</span>
+      <div class="rifle-ammo-row">
+        <span id="rifle-clip">25</span>
         <span style="color:#8fa3b8;">/</span>
-        <span id="vandal-reserve">75</span>
-        <span style="font-size:12px;color:#b9c2e0;margin-left:auto;">Băng đạn nhặt: <b id="vandal-mags-picked" style="color:#F2C14E;">3</b></span>
+        <span id="rifle-reserve">75</span>
+        <span style="font-size:12px;color:#b9c2e0;margin-left:auto;">Băng đạn: <b id="rifle-mags-picked" style="color:#F2C14E;">3</b></span>
       </div>
-      <div class="vandal-mags-info">
-        <b>Chuột Trái / [B]</b>: Bắn Vandal · <b>[G]</b>: Thay Băng Đạn · Chạy qua <b>Băng Đạn</b> trên sàn để nhặt (+25)
+      <div class="rifle-mags-info">
+        <b>Chuột Trái / [B]</b>: Bắn · <b>[G]</b>: Thay Băng Đạn · Nhặt <b>Băng Đạn</b> trên sàn (+25)
       </div>
     </div>
 
-    <!-- Bottom-Center: 10-slot Memoria Bar & Prompt -->
+    <!-- Bottom-Center: Dynamic Capacity Firefly Bar & Prompt -->
     <div id="hud-bottom-center">
-      <div id="context-prompt">E — Nạp Memoria (0/10)</div>
+      <div id="context-prompt">E — Nạp ánh sáng (0/10)</div>
       <div class="anime-card">
-        <div class="mote-bar-header">💎 MEMORIA — ĐOM ĐÓM KÝ ỨC (<span id="carried-text">0/10</span>)</div>
+        <div class="mote-bar-header">✨ ĐOM ĐÓM ĐANG MANG / SỨC CHỨA (<span id="carried-text">0/10</span>)</div>
         <div class="mote-slots-10" id="motes-pills">
           <div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div>
           <div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div>
@@ -466,15 +500,15 @@
       </div>
     </div>
 
-    <!-- Bottom-Right: Cooldown Icons for Genshin Dash & Pulse -->
+    <!-- Bottom-Right: Cooldown Icons for Dash & Pulse -->
     <div id="hud-bottom-right">
-      <div class="cd-box" id="cd-dash-box" title="Phím Shift: Lướt Genshin Dash 14m/s">
+      <div class="cd-box" id="cd-dash-box" title="Phím Shift: Lướt Gió 14m/s">
         <span class="cd-key">[SHIFT]</span>
-        <span class="cd-name">LƯỚT GENSHIN</span>
+        <span class="cd-name">LƯỚT GIÓ</span>
         <span class="cd-timer" id="cd-dash-text">Sẵn sàng</span>
       </div>
-      <div class="cd-box" id="cd-pulse-box" title="Phím R: Tỏa Sáng (Tốn 3 Memoria)">
-        <span class="cd-key">[R · 3 Memoria]</span>
+      <div class="cd-box" id="cd-pulse-box" title="Phím R: Tỏa Sáng (Tốn 3 Đom Đóm)">
+        <span class="cd-key">[R · 3 Đóm]</span>
         <span class="cd-name">TỎA SÁNG</span>
         <span class="cd-timer" id="cd-pulse-text">Sẵn sàng</span>
       </div>
@@ -488,16 +522,16 @@
         <path id="intro-svg-path" fill="none" stroke="#F2C14E" stroke-width="3.5" stroke-linecap="round"
           d="M35 20 L65 20 L78 45 L65 78 L35 78 L22 45 Z M50 10 L50 20 M38 84 L62 84 M50 38 C56 45, 56 56, 50 64 C44 56, 44 45, 50 38 Z" />
       </svg>
-      <div class="modal-ep" id="intro-ep">EVERNIGHT (HSR) · VANDAL FPS · GENSHIN DASH</div>
+      <div class="modal-ep" id="intro-ep">ĐẢO ĐÈN LỒNG · ĐÈN CẠN DẦU (PHASE 3)</div>
       <h1 class="modal-title" id="intro-title">ĐÊM 1 — ĐẢO BẾN</h1>
       <div class="ong-dang-quote">
         <div class="ong-dang-speaker">🏮 Lời Ông Đăng (Lão Giữ Đèn):</div>
         <div id="ong-dang-text">
-          "Chào <b>Evernight</b>! Đêm nay sương đen đã phủ kín cả ba hòn đảo. Hãy cầm chắc khẩu <b>Vandal</b> ở góc nhìn thứ nhất (hoặc bấm <b>[V]</b> để xem animation chạy bộ & <b>Lướt Genshin [Shift]</b>), nhặt thêm <b>Băng Đạn</b> trên sàn đấu và thu thập đủ 10 viên <b>Memoria</b> cho mỗi Đèn Lồng Lớn nhé!"
+          "Cháu <b>Mây</b> ơi, gió đêm nay làm đèn hao dầu liên tục và lũ Bóng Mực đang tìm cách hút cạn những ngọn đèn yếu (<b>dầu &lt; 30</b>)! Hãy châm thêm dầu cho các đèn đang sáng, thắp lại đèn tắt (chỉ tốn 5 đom đóm) và <b>giữ ít nhất 60% số đèn sáng cho tới lúc bình minh</b> nhé!"
         </div>
       </div>
       <div>
-        <button class="cta-btn" id="btn-start-game">✨ Bắt Đầu Đêm Này</button>
+        <button class="cta-btn" id="btn-start-game">✨ Bắt Đầu Đêm Này (Khóa Chuột FPS)</button>
         <button class="cta-btn secondary" id="btn-open-settings">⚙ Cài Đặt</button>
       </div>
       <div style="margin-top: 12px; display: flex; justify-content: center; gap: 8px;">
@@ -514,7 +548,7 @@
       <div class="modal-ep">TRÒ CHƠI ĐANG TẠM DỪNG</div>
       <h2 class="modal-title">TẠM DỪNG</h2>
       <div style="display: flex; flex-direction: column; gap: 10px; max-width: 300px; margin: 18px auto;">
-        <button class="cta-btn" id="btn-resume">▶ Tiếp Tục</button>
+        <button class="cta-btn" id="btn-resume">▶ Tiếp Tục (Khóa Chuột)</button>
         <button class="cta-btn secondary" id="btn-pause-restart">↻ Chơi Lại Đêm</button>
         <button class="cta-btn secondary" id="btn-pause-settings">⚙ Cài Đặt</button>
         <button class="cta-btn secondary" id="btn-pause-menu">🏠 Về Menu Chính</button>
@@ -522,11 +556,11 @@
     </div>
   </div>
 
-  <!-- 3. Settings Modal -->
+  <!-- 3. Settings Modal (Volume, Mouse Sensitivity & Colorblind Mode persisted in localStorage) -->
   <div class="overlay-modal hidden" id="settings-modal">
     <div class="modal-box">
       <div class="modal-ep">CÀI ĐẶT HỆ THỐNG</div>
-      <h2 class="modal-title">ÂM LƯỢNG & ĐỘ NHẠY</h2>
+      <h2 class="modal-title">ÂM LƯỢNG, ĐỘ NHẠY & HIỂN THỊ</h2>
       <div class="settings-row">
         <span>🔊 Âm lượng (<span id="val-volume">75%</span>)</span>
         <input type="range" id="input-volume" min="0" max="100" value="75" />
@@ -534,6 +568,10 @@
       <div class="settings-row">
         <span>🖱 Độ nhạy chuột (<span id="val-sens">1.0x</span>)</span>
         <input type="range" id="input-sens" min="20" max="200" value="100" />
+      </div>
+      <div class="settings-row">
+        <span>👁 Bảng màu dễ phân biệt (Chế độ mù màu)</span>
+        <input type="checkbox" id="input-colorblind" />
       </div>
       <div style="margin-top: 20px;">
         <button class="cta-btn" id="btn-close-settings">Lưu & Đóng</button>

@@ -1,4 +1,4 @@
-// Procedural Web Audio API Synthesizer for Đảo Đèn Lồng (Phase 2 + Vandal FPS / Evernight / Genshin Dash SFX)
+// Procedural Web Audio API Synthesizer for Đảo Đèn Lồng (Phase 3 · Contract v1.2)
 
 export class CozyAudioEngine {
   constructor(initialVolume = 0.75) {
@@ -36,8 +36,8 @@ export class CozyAudioEngine {
     }, 1500);
   }
 
-  // Vandal Heavy Rifle Shot SFX (Punchy low-end thump + metallic crack)
-  playVandalShot() {
+  // Light Rifle Shot SFX (Punchy low-end thump + metallic crack)
+  playRifleShot() {
     const ctx = this._ensureCtx();
     if (!ctx) return;
     const now = ctx.currentTime;
@@ -58,7 +58,7 @@ export class CozyAudioEngine {
     this._playBellNote(1480, 0.05, 0.09, "square", 0);
   }
 
-  // Vandal Magazine Reload SFX
+  // Light Rifle Magazine Reload SFX
   playReload() {
     this._playBellNote(320, 0.08, 0.1, "square", 0.0);
     this._playBellNote(240, 0.08, 0.1, "triangle", 0.12);
@@ -72,7 +72,15 @@ export class CozyAudioEngine {
     this._playBellNote(720, 0.12, 0.12, "triangle", 0.07);
   }
 
-  // 1. Nhặt Memoria (Mote / Charm pickup)
+  // Monster / Drifter HP Zero Shatter SFX (Crystalline burst + low impact)
+  playShatter() {
+    this._playBellNote(180, 0.25, 0.18, "sawtooth", 0.0);
+    [880, 1174.66, 1567.98, 2093.0].forEach((f, i) => {
+      this._playBellNote(f, 0.22, 0.12, "triangle", i * 0.035);
+    });
+  }
+
+  // 1. Nhặt Đom Đóm (Mote / Charm pickup)
   playMotePickup(carried = 1) {
     const notes = [523.25, 587.33, 659.25, 783.99, 880.0, 987.77, 1046.5, 1174.66, 1318.5, 1567.98];
     const freq = notes[Math.min(notes.length - 1, Math.max(0, carried - 1))];
@@ -150,7 +158,7 @@ export class CozyAudioEngine {
     osc.stop(now + (isPad ? 0.3 : 0.16));
   }
 
-  // 6. Lướt (Genshin Elemental Dash SFX)
+  // 6. Lướt Gió (Wind Dash SFX)
   playDash() {
     const ctx = this._ensureCtx();
     if (!ctx) return;
