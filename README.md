@@ -32,17 +32,20 @@ python3 headless.py --seed 42 --night 3 --ticks 21600 --out /tmp/night3.jsonl --
 
 ---
 
-## 2. Điều khiển trong Game 3D
+## 2. Điều khiển trong Game 3D (First-Person FPS & Third-Person TPS)
 
 | Phím / Thao tác | Chức năng |
 |---|---|
-| `W A S D` hoặc `↑ ↓ ← →` | Di chuyển Mây (`6.0 m/s`, tăng lên `7.2 m/s` khi có **Bùa Gió**) |
+| `V` hoặc nút `🎥 Góc Nhìn` | Chuyển đổi **First-Person (FPS — Cầm súng Vandal)** ↔ **Third-Person (TPS — Xem Evernight chạy bộ & Lướt Genshin)** |
+| `Chuột Trái` hoặc `B` | **Bắn súng Vandal** — tiêu hao 1 viên đạn trong băng (`25` viên/băng), bắn tia đạn 3D làm choáng & đẩy lùi Bóng Mực |
+| `G` | **Thay Băng Đạn Vandal** — hoạt ảnh tháo/lắp băng đạn cong bằng `Anime.js` (nhặt thêm **Băng Đạn** phát sáng trên sàn đấu `+25` viên) |
+| `W A S D` hoặc `↑ ↓ ← →` | Di chuyển **Evernight** (`6.0 m/s`, tăng lên `7.2 m/s` khi có **Bùa Gió**) kèm **Animation chạy bộ (Run Cycle)** |
 | `Space` | Nhảy (`vy = 7.0 m/s`, trọng lực `-20 m/s²`) |
-| `Shift` | **Lướt (`Dash`)** — `14 m/s` trong `0.2s` (`12` tick), hồi chiêu `1.5s` (miễn hồi chiêu khi có **Bùa Gió**) |
-| `E` hoặc `F` | Nạp đom đóm vào Đèn Lồng Lớn gần nhất (`<= 2.0m`, chi phí `10` đom đóm/đèn) |
-| `R` | **Tỏa Sáng (`Pulse`)** — tốn `3` đom đóm, bán kính 3D `5m`, hồi chiêu `3s`, làm choáng Bóng Mực `120` tick & đẩy lùi `4m`, đánh rơi lại đom đóm từ Gió Lạc |
+| `Shift` | **Lướt Genshin (`Elemental Dash`)** — `14 m/s` trong `0.2s` (`12` tick), xoay người 360° kèm vòng xoáy nguyên tố, vệt tàn ảnh (afterimage) & speed-lines |
+| `E` hoặc `F` | Nạp **Memoria (Đom Đóm)** vào Đèn Lồng Lớn gần nhất (`<= 2.0m`, chi phí `10` Memoria/đèn) |
+| `R` | **Tỏa Sáng (`Pulse`)** — tốn `3` Memoria, bán kính 3D `5m`, hồi chiêu `3s`, làm choáng Bóng Mực `120` tick & đẩy lùi `4m`, đánh rơi lại Memoria từ Gió Lạc |
 | `Esc` hoặc `P` | **Tạm dừng (`Pause`)** — dừng toàn bộ logic, mở menu Tiếp tục / Chơi lại / Cài đặt / Về Menu |
-| `Q` / `C` hoặc **Kéo chuột** | Xoay góc nhìn Camera 3D quanh Mây (`cam_yaw_deg`) |
+| `Q` / `C` hoặc **Kéo chuột** | Xoay góc nhìn Camera 3D (`cam_yaw_deg` & `fpsPitch`) |
 
 ---
 
@@ -63,14 +66,18 @@ python3 headless.py --seed 42 --night 3 --ticks 21600 --out /tmp/night3.jsonl --
 
 Toàn bộ phần sáng tạo nằm ở tầng hiển thị/âm thanh `web/`, **không làm thay đổi bất kỳ dòng đầu ra JSONL nào của `headless.py`**:
 
-1. **Nhân vật Ông Đăng (Lão Giữ Đèn) & Cutscene Dẫn truyện 3 Đêm:**
-   - Mô hình 3D Cel-Shaded của **Ông Đăng** cầm trượng đèn lồng đứng tại quảng trường xuất phát cùng lời dẫn truyện riêng cho từng Đêm (Đảo Bến → Đảo Cau → Đảo Chuông → Bình Minh) kèm họa tiết SVG vẽ nét bằng `Anime.js`.
-2. **Sinh vật trang trí: Đàn Cá Mây (`Cloud Koi`) dưới Biển Mây:**
-   - Đàn cá chép ánh sáng vàng bơi lượn dưới lớp Biển Mây (`#12384A`) quanh đảo và dưới gầm cầu tre Đảo Cau.
-3. **Hiệu ứng 3D Anime cho Bùa Gió, Gió Lạc & Cơn Gió Đêm 3:**
-   - Khi nhặt **Bùa Gió**, lá bùa đỏ `#C8102E` viền vàng `#F2C14E` bay xoay quanh người Mây; **Gió Lạc** uốn lượn như dải lụa bạc `#8FA3B8`; ở Đêm 3, lá phong vàng bay ngang màn hình theo đúng góc gió `dir_deg` báo trước 2 giây trước mỗi cơn gió mạnh.
-4. **Bộ Tổng hợp Âm thanh Web Audio API 10 Hiệu ứng + Nhạc nền Đêm (`web/audio.js`):**
-   - Nhạc nền đêm ngũ cung êm dịu cùng đầy đủ 10 hiệu ứng âm thanh chuẩn (nhặt, bùa gió, thắp đèn, tỏa sáng, bị đánh, nhảy/bục nhảy, lướt, Bóng Mực xuất hiện, đếm ngược 10 giây cuối, thắng/thua).
+1. **Chế độ First-Person (FPS) & Súng Vandal (Valorant Style) + Nhặt Băng Đạn trên sàn đấu:**
+   - Góc nhìn thứ nhất (chuyển đổi linh hoạt sang góc nhìn thứ ba bằng phím `[V]`) có tâm ngắm FPS (`#00ffcc`), hitmarker đỏ khi bắn trúng Bóng Mực, và viewmodel 3D khẩu **Vandal** (thân súng, kính ngắm holographic, nòng giảm giật, băng đạn cong tháo rời được).
+   - Mỗi phát bắn (`Chuột Trái / [B]`) có hiệu ứng lửa đầu nòng (muzzle flash), đường đạn tracer 3D, giật nòng recoil và hoạt ảnh tháo/lắp băng đạn (`[G]`) bằng `Anime.js`.
+   - Trên sàn đấu xuất hiện các **Băng Đạn Vandal** phát sáng (`+25` viên đạn dự trữ khi chạy qua nhặt, tự hồi lại sau 10 giây).
+2. **Model 3D Nhân vật Evernight (HSR Fan-Tribute Rig) + Animation Chạy bộ & Animation Lướt Genshin:**
+   - Nhân vật được dựng bằng bộ khung khớp 3D phân cấp (`torsoPivot`, `headPivot`, `leftArmPivot`, `rightArmPivot`, `leftLegPivot`, `rightLegPivot`, `leftCoatTail`, `rightCoatTail`, `leftHairTail`, `rightHairTail`) với mái tóc bạc-tím đôi và áo choàng sao đêm.
+   - **Animation Chạy bộ (Run Cycle):** Chân bước so le, tay cầm súng Vandal đung đưa, tà áo và đuôi tóc bay theo vận tốc.
+   - **Animation Lướt Genshin (`Elemental Dash`):** Khi nhấn `Shift`, nhân vật lao người xoay 360° giữa vòng xoáy nguyên tố xanh-vàng (`dashWindRing`), để lại bóng tàn ảnh (afterimage clone) và hiệu ứng speed-lines trên màn hình.
+3. **Tinh thể Кý ức Memoria (HSR Memoria Crystals):**
+   - Đom đóm được tạo hình thành tinh thể đa diện **Memoria** phát sáng xanh-tím-vàng kèm vòng quỹ đạo ký ức xoay quanh.
+4. **Nhân vật Ông Đăng, Đàn Cá Mây (`Cloud Koi`) & Bộ Tổng hợp Âm thanh Web Audio API:**
+   - **Ông Đăng** đứng tại quảng trường xuất phát dẫn truyện cho 3 Đêm; đàn **Cá Mây** bơi dưới Biển Mây; nhạc nền đêm ngũ cung + đầy đủ âm thanh bắn Vandal, thay băng đạn, nhặt băng đạn, lướt Genshin và 10 SFX chuẩn.
 
 > **Bằng chứng phần lõi không bị ảnh hưởng:** Toàn bộ **17/17 bài test** trong `tests/test_contract_phase1.py` và `tests/test_contract_phase2.py` đều đạt 100% trong `1.36 giây` (xem [docs/proof/phase2/PROOF.md](docs/proof/phase2/PROOF.md)).
 

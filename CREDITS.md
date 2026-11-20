@@ -1,9 +1,10 @@
 # CREDITS — Đảo Đèn Lồng
 
 ## 1. Bản gốc & Nội dung trò chơi
-- **Bối cảnh, nhân vật (Mây, Bóng Mực, Đảo Bến) & Thiết kế:** Bản gốc theo đề bài Lab Day 12 AI SDLC (VinUni-AI20k Khóa 5).
-- **Mô hình 3D & Hiệu ứng đồ họa Anime Cel-Shading:** Tạo hoàn toàn bằng mã nguồn thủ tục (Procedural Three.js Geometries + Custom 4-band Anime Toon Gradient Map + Inverted-Hull Outlines) — không sử dụng model bản quyền bên ngoài.
-- **Âm thanh (SFX):** Tổng hợp thời gian thực bằng **Web Audio API** (`web/audio.js` — sóng âm pentatonic chuông gió, tiếng ngân đèn lồng, sóng ánh sáng) — không sử dụng tệp âm thanh bên ngoài.
+- **Bối cảnh, bản đồ 3 Đêm (Đảo Bến, Đảo Cau, Đảo Chuông) & Thiết kế lõi:** Bản gốc theo đề bài Lab Day 12 AI SDLC (VinUni-AI20k Khóa 5).
+- **Mô hình 3D & Hiệu ứng đồ họa Anime Cel-Shading (Procedural Fan-Creation Tribute):**
+  - Toàn bộ mô hình 3D trong repo (nhân vật khớp xương phong cách **Evernight HSR**, tinh thể **Memoria**, súng **Vandal** góc nhìn thứ nhất/thứ ba, băng đạn trên sàn đấu và hiệu ứng **Lướt Genshin Elemental Dash**) được **tự dựng 100% bằng mã nguồn hình học thủ tục (Procedural Three.js Geometries + Anime.js Keyframes)** theo tinh thần fan-creation phi thương mại, không sao chép hay nhúng bất kỳ tệp tài nguyên trích xuất có bản quyền nào.
+- **Âm thanh (SFX & BGM):** Tổng hợp thời gian thực bằng **Web Audio API** (`web/audio.js`) — 0KB tệp âm thanh bên ngoài.
 
 ## 2. Thư viện Mã nguồn mở (Open-Source Libraries)
 - **Three.js (`v0.160.0`)** — Giấy phép **MIT** (`https://github.com/mrdoob/three.js`), lưu cục bộ tại `web/vendor/three.module.min.js`.

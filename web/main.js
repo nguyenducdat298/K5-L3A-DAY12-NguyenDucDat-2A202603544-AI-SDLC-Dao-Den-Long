@@ -3,7 +3,7 @@ import anime from "/web/vendor/anime.es.js";
 import { GameSimulationJS, DT, distXZ } from "/web/sim.js";
 import { CozyAudioEngine } from "/web/audio.js";
 
-// --- Standardized Color Palette (TICKET-02 Part 3) ---
+// --- Standardized Color Palette (TICKET-02 Part 3) + HSR Memoria & Valorant Vandal Accents ---
 const PALETTE = {
   NIGHT_SKY: 0x0e1430,
   MIST: 0x1b2350,
@@ -16,6 +16,8 @@ const PALETTE = {
   LANTERN_OFF: 0x5b5f6e,
   MOTE_CORE: 0xfff6c2,
   MOTE_HALO: 0xffe58a,
+  MEMORIA_CYAN: 0x7df9ff,
+  MEMORIA_VIOLET: 0xb86bff,
   SHADE_BODY: 0x120a1a,
   SHADE_RIM: 0x7a3cff,
   SHADE_STUN: 0x3a3450,
@@ -31,17 +33,17 @@ const NIGHT_STORIES = {
   1: {
     title: "ĐÊM 1 — ĐẢO BẾN",
     quote:
-      '"Cháu Mây ơi, đêm nay sương đen đã phủ kín cả ba hòn đảo. Hãy bắt đầu từ <b>Đảo Bến</b> (bán kính 40m): gom đủ 10 đom đóm cho mỗi chiếc Đèn Lồng Lớn, dùng <b>Lướt [Shift]</b> và <b>Tỏa Sáng [R]</b> để đẩy lùi Bóng Mực trước khi bình minh lên nhé!"',
+      '"Chào <b>Evernight</b>! Đêm nay sương đen đã phủ kín cả ba hòn đảo. Hãy cầm chắc khẩu <b>Vandal</b> ở góc nhìn thứ nhất (hoặc bấm <b>[V]</b> để xem animation chạy bộ & <b>Lướt Genshin [Shift]</b>), nhặt thêm <b>Băng Đạn</b> trên sàn đấu và thu thập đủ 10 viên <b>Memoria</b> cho mỗi Đèn Lồng Lớn nhé!"',
   },
   2: {
     title: "ĐÊM 2 — ĐẢO CAU",
     quote:
-      '"Tốt lắm! Phía trước là <b>Đảo Cau</b> gồm hai hòn đảo nối bằng chiếc cầu tre hẹp và hai <b>Bục Nhảy</b> cổ ngữ. Hãy coi chừng <b>Gió Lạc</b> bay tới cướp đom đóm khi cháu mang từ 5 đốm sáng trở lên, và nhớ nhặt <b>Bùa Gió</b> giữa cầu để lướt không hồi chiêu!"',
+      '"Phía trước là <b>Đảo Cau</b> gồm hai hòn đảo nối bằng cầu tre và hai <b>Bục Nhảy</b> cổ ngữ. Hãy dùng súng <b>Vandal</b> bắn hạ hoặc dùng <b>Tỏa Sáng [R]</b> để đánh rơi <b>Memoria</b> từ <b>Gió Lạc</b>, và nhặt <b>Bùa Gió</b> giữa cầu để kích hoạt Lướt Genshin liên hoàn không hồi chiêu!"',
   },
   3: {
     title: "ĐÊM 3 — ĐẢO CHUÔNG",
     quote:
-      '"Đêm cuối cùng tại <b>Đảo Chuông</b> 3 tầng! Hãy leo theo hai con dốc đá (góc 30° và 150°) lên tầng 1, rồi dẫm lên Bục Nhảy để bay lên đỉnh <b>Tháp Chuông</b> tầng 2. Cứ mỗi 30 giây sẽ có cơn <b>Gió Mạnh</b> thổi qua — hãy nghe tiếng lá bay báo trước 2 giây để giữ vững bước chân!"',
+      '"Đêm cuối tại <b>Đảo Chuông</b> 3 tầng! Hãy leo theo hai con dốc đá (30° và 150°) lên tầng 1, nhặt các <b>Băng Đạn Vandal</b> dọc đường và dẫm lên Bục Nhảy để bay lên đỉnh <b>Tháp Chuông</b> tầng 2 trước khi <b>Gió Mạnh</b> thổi qua!"',
   },
 };
 
@@ -83,6 +85,95 @@ function addAnimeOutline(mesh, scale = 1.06, color = 0x0e1430) {
   outline.scale.setScalar(scale);
   mesh.add(outline);
   return outline;
+}
+
+// Build a detailed 3D Valorant Vandal Rifle Mesh (Reaver / Prime Gold-Crimson Skin)
+function createVandalRifleMesh() {
+  const gun = new THREE.Group();
+
+  // Main Receiver
+  const recGeo = new THREE.BoxGeometry(0.11, 0.16, 0.62);
+  const recMesh = new THREE.Mesh(recGeo, toonMat(0x1b1e2b));
+  addAnimeOutline(recMesh, 1.06, PALETTE.GOLD_BORDER);
+  gun.add(recMesh);
+
+  // Gold & Crimson Trim Strip along top rail
+  const railGeo = new THREE.BoxGeometry(0.07, 0.035, 0.56);
+  const railMesh = new THREE.Mesh(railGeo, new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER }));
+  railMesh.position.set(0, 0.095, 0.02);
+  gun.add(railMesh);
+
+  // Holographic Sight
+  const sightGeo = new THREE.BoxGeometry(0.08, 0.09, 0.12);
+  const sightMesh = new THREE.Mesh(sightGeo, toonMat(0x282d40));
+  sightMesh.position.set(0, 0.14, -0.05);
+  gun.add(sightMesh);
+
+  const reticleGeo = new THREE.SphereGeometry(0.018, 6, 6);
+  const reticleMesh = new THREE.Mesh(reticleGeo, new THREE.MeshBasicMaterial({ color: 0x00ffcc }));
+  reticleMesh.position.set(0, 0.15, -0.05);
+  gun.add(reticleMesh);
+
+  // Long Rifled Barrel & Muzzle Brake
+  const barrelGeo = new THREE.CylinderGeometry(0.026, 0.028, 0.48, 10);
+  const barrelMesh = new THREE.Mesh(barrelGeo, toonMat(0x353b4f));
+  barrelMesh.rotation.x = Math.PI / 2;
+  barrelMesh.position.set(0, 0.03, 0.52);
+  gun.add(barrelMesh);
+
+  const muzzleGeo = new THREE.CylinderGeometry(0.04, 0.035, 0.1, 8);
+  const muzzleMesh = new THREE.Mesh(muzzleGeo, toonMat(PALETTE.MAY_SCARF));
+  muzzleMesh.rotation.x = Math.PI / 2;
+  muzzleMesh.position.set(0, 0.03, 0.78);
+  gun.add(muzzleMesh);
+
+  // Handguard
+  const guardGeo = new THREE.BoxGeometry(0.095, 0.11, 0.34);
+  const guardMesh = new THREE.Mesh(guardGeo, toonMat(PALETTE.MAY_SCARF));
+  guardMesh.position.set(0, 0.01, 0.42);
+  addAnimeOutline(guardMesh, 1.05, PALETTE.GOLD_BORDER);
+  gun.add(guardMesh);
+
+  // Tactical Stock
+  const stockGeo = new THREE.BoxGeometry(0.09, 0.17, 0.32);
+  const stockMesh = new THREE.Mesh(stockGeo, toonMat(0x171924));
+  stockMesh.position.set(0, -0.03, -0.44);
+  gun.add(stockMesh);
+
+  // Pistol Grip
+  const gripGeo = new THREE.BoxGeometry(0.075, 0.22, 0.1);
+  const gripMesh = new THREE.Mesh(gripGeo, toonMat(0x222636));
+  gripMesh.position.set(0, -0.16, -0.14);
+  gripMesh.rotation.x = -0.28;
+  gun.add(gripMesh);
+
+  // Detachable Curved Vandal Banana Magazine
+  const magGroup = new THREE.Group();
+  const magUpper = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.24, 0.12), toonMat(0x1e2233));
+  addAnimeOutline(magUpper, 1.07, PALETTE.MEMORIA_CYAN);
+  const magGlow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.082, 0.18, 0.035),
+    new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER })
+  );
+  magGlow.position.z = 0.045;
+  magGroup.add(magUpper, magGlow);
+  magGroup.position.set(0, -0.2, 0.12);
+  magGroup.rotation.x = 0.22;
+  gun.add(magGroup);
+
+  // Muzzle Flash Star
+  const flashGeo = new THREE.OctahedronGeometry(0.14, 0);
+  const flashMat = new THREE.MeshBasicMaterial({
+    color: PALETTE.MOTE_CORE,
+    transparent: true,
+    opacity: 0,
+  });
+  const flashMesh = new THREE.Mesh(flashGeo, flashMat);
+  flashMesh.position.set(0, 0.03, 0.88);
+  flashMesh.scale.set(1.2, 1.2, 2.2);
+  gun.add(flashMesh);
+
+  return { gun, magGroup, flashMesh, flashMat };
 }
 
 const SETTINGS_KEY = "dao_den_long_settings_v11";
@@ -154,15 +245,31 @@ class AnimeThreeIslandsApp {
     this.currentNight = Number(params.get("night")) || 1;
     if (![1, 2, 3].includes(this.currentNight)) this.currentNight = 1;
 
+    // First-Person Mode is default per user request (can toggle with [V] or HUD button)
+    this.firstPerson = params.get("tps") === "1" ? false : true;
+
     this.wonNightScores = { 1: 0, 2: 0, 3: 0 };
     this.sim = new GameSimulationJS(this.tuning, 2026 + this.currentNight, this.currentNight);
 
     this.started = false;
     this.botEnabled = false;
     this.camYawDeg = 0;
-    this.camPitch = 0.48;
-    this.camDist = 15.5;
+    this.fpsPitch = -0.06;
+    this.camPitch = 0.44;
+    this.camDist = 11.5;
     this.lastCountdownSec = -1;
+    this.walkCyclePhase = 0;
+
+    // Vandal Rifle & Floor Magazine State (Purely client-side so Headless Contract v1.1 is untouched)
+    this.vandalClipMax = 25;
+    this.vandalClip = 25;
+    this.vandalReserve = 75;
+    this.vandalMagsPicked = 3;
+    this.isReloading = false;
+    this.lastShotTime = 0;
+    this.bulletTracers = [];
+    this.floorMagazines = [];
+    this.afterimages = [];
 
     this.keys = {};
     this.pendingJump = false;
@@ -171,7 +278,6 @@ class AnimeThreeIslandsApp {
     this.pendingDash = false;
     this.pendingPause = false;
 
-    this.scoreProxy = { val: 0 };
     this.lanternMeshes = new Map();
     this.moteMeshes = new Map();
     this.shadeMeshes = new Map();
@@ -180,15 +286,16 @@ class AnimeThreeIslandsApp {
     this.darkMistPuffs = [];
     this.cloudKoiList = [];
     this.windLeaves = [];
-    this.afterimages = [];
 
     this._initScene();
     this._buildSeaOfCloudsAndStars();
-    this._buildPlayerMay();
+    this._buildPlayerEvernight();
+    this._buildFPSVandalViewmodel();
     this._rebuildNightWorld(this.currentNight);
-    this._syncEntities(0);
+    this._syncEntities(0, 0.016);
     this._bindEvents();
     this._applySettingsToUI();
+    this._updateCameraModeUI();
     this._playIntroAnime();
 
     if (params.get("bot") === "1") this.toggleBot(true);
@@ -206,9 +313,11 @@ class AnimeThreeIslandsApp {
     const container = document.getElementById("canvas-container");
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(PALETTE.NIGHT_SKY);
-    this.scene.fog = new THREE.FogExp2(PALETTE.MIST, 0.022);
+    this.scene.fog = new THREE.FogExp2(PALETTE.MIST, 0.02);
 
-    this.camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.1, 220);
+    this.camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.08, 220);
+    this.scene.add(this.camera);
+
     this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(1);
@@ -216,30 +325,593 @@ class AnimeThreeIslandsApp {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
-    // Ambient light intensity required by Part 3: 0.15 + 0.55 * (lit / total)
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
     this.scene.add(this.ambientLight);
 
-    this.hemiLight = new THREE.HemisphereLight(0x4a5e9e, PALETTE.NIGHT_SKY, 0.55);
+    this.hemiLight = new THREE.HemisphereLight(0x5b72b5, PALETTE.NIGHT_SKY, 0.65);
     this.scene.add(this.hemiLight);
 
-    this.moonLight = new THREE.DirectionalLight(0xc8d8ff, 1.05);
+    this.moonLight = new THREE.DirectionalLight(0xd8e4ff, 1.15);
     this.moonLight.position.set(-22, 42, -18);
-    this.moonLight.castShadow = true;
-    this.moonLight.shadow.mapSize.set(1024, 1024);
-    const d = 48;
-    this.moonLight.shadow.camera.left = -d;
-    this.moonLight.shadow.camera.right = d;
-    this.moonLight.shadow.camera.top = d;
-    this.moonLight.shadow.camera.bottom = -d;
     this.scene.add(this.moonLight);
 
     this.islandRoot = new THREE.Group();
     this.scene.add(this.islandRoot);
   }
 
+  _buildFPSVandalViewmodel() {
+    // First-Person Vandal Rifle & Evernight Right Forearm attached directly to Camera
+    this.fpsWeaponPivot = new THREE.Group();
+    this.fpsVandal = createVandalRifleMesh();
+    // Flip gun so barrel (+Z in local) points along camera -Z
+    this.fpsVandal.gun.rotation.y = Math.PI;
+    this.fpsWeaponPivot.add(this.fpsVandal.gun);
+
+    // Evernight Gloved Hand & Starry Sleeve on the FPS Vandal
+    const armGeo = new THREE.CylinderGeometry(0.055, 0.07, 0.42, 10);
+    const armMesh = new THREE.Mesh(armGeo, toonMat(0x231b3d));
+    armMesh.rotation.x = Math.PI / 2.4;
+    armMesh.position.set(0.03, -0.16, 0.25);
+    addAnimeOutline(armMesh, 1.06, PALETTE.GOLD_BORDER);
+    this.fpsWeaponPivot.add(armMesh);
+
+    // Base FPS viewmodel position in lower-right corner
+    this.fpsBasePos = { x: 0.34, y: -0.27, z: -0.56 };
+    this.fpsRecoilOffset = { z: 0, pitch: 0, roll: 0 };
+    this.fpsWeaponPivot.position.set(this.fpsBasePos.x, this.fpsBasePos.y, this.fpsBasePos.z);
+    this.camera.add(this.fpsWeaponPivot);
+  }
+
+  _buildPlayerEvernight() {
+    // Articulated 3D Anime Character Model: Evernight (HSR Inspired) with full skeletal joints for Run & Genshin Dash
+    this.mayGroup = new THREE.Group();
+    this.charRig = new THREE.Group();
+    this.mayGroup.add(this.charRig);
+
+    // 1. Torso & HSR Starry Astral Coat (#1f1938 with #E8E2D0 inner dress & #C8102E / #F2C14E trim)
+    this.torsoPivot = new THREE.Group();
+    this.torsoPivot.position.y = 0.88;
+    this.charRig.add(this.torsoPivot);
+
+    const upperDress = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 0.62, 12), toonMat(0x21193b));
+    upperDress.position.y = 0.18;
+    addAnimeOutline(upperDress, 1.07, PALETTE.GOLD_BORDER);
+    this.torsoPivot.add(upperDress);
+
+    const chestRibbon = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), new THREE.MeshBasicMaterial({ color: PALETTE.MAY_SCARF }));
+    chestRibbon.position.set(0, 0.3, 0.23);
+    this.torsoPivot.add(chestRibbon);
+
+    // Flowing Split Coat Tails (animate during run & dash)
+    this.leftCoatTail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.62, 0.06), toonMat(PALETTE.MAY_ROBE));
+    this.leftCoatTail.position.set(-0.16, -0.22, -0.18);
+    addAnimeOutline(this.leftCoatTail, 1.06, PALETTE.MAY_SCARF);
+    this.torsoPivot.add(this.leftCoatTail);
+
+    this.rightCoatTail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.62, 0.06), toonMat(PALETTE.MAY_ROBE));
+    this.rightCoatTail.position.set(0.16, -0.22, -0.18);
+    addAnimeOutline(this.rightCoatTail, 1.06, PALETTE.MAY_SCARF);
+    this.torsoPivot.add(this.rightCoatTail);
+
+    // Scarf
+    const scarfMesh = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.07, 8, 16), toonMat(PALETTE.MAY_SCARF));
+    scarfMesh.rotation.x = Math.PI / 2;
+    scarfMesh.position.y = 0.48;
+    this.torsoPivot.add(scarfMesh);
+
+    // 2. Head & Silver-Lavender HSR Anime Hair + Twin Flowing Tails
+    this.headPivot = new THREE.Group();
+    this.headPivot.position.y = 0.68;
+    this.torsoPivot.add(this.headPivot);
+
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 14), toonMat(0xffe4d0));
+    addAnimeOutline(headMesh, 1.07);
+    this.headPivot.add(headMesh);
+
+    // Glowing Star-Rail Crimson-Violet Anime Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.045, 8, 8);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3b9d });
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.09, 0.0, 0.23);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(0.09, 0.0, 0.23);
+    this.headPivot.add(eyeL, eyeR);
+
+    // Silver-Lavender Hair Dome & Twin Tails
+    const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.285, 14, 12), toonMat(0xdad2f5));
+    hairCap.position.set(0, 0.05, -0.03);
+    addAnimeOutline(hairCap, 1.06, 0x2b1d4a);
+    this.headPivot.add(hairCap);
+
+    this.leftHairTail = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.78, 8), toonMat(0xc5b8f0));
+    this.leftHairTail.rotation.x = Math.PI * 0.88;
+    this.leftHairTail.position.set(-0.22, -0.22, -0.18);
+    addAnimeOutline(this.leftHairTail, 1.06);
+    this.headPivot.add(this.leftHairTail);
+
+    this.rightHairTail = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.78, 8), toonMat(0xc5b8f0));
+    this.rightHairTail.rotation.x = Math.PI * 0.88;
+    this.rightHairTail.position.set(0.22, -0.22, -0.18);
+    addAnimeOutline(this.rightHairTail, 1.06);
+    this.headPivot.add(this.rightHairTail);
+
+    // Starlight Crown / Nón Lá Halo Ornament
+    const crownMesh = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.28, 16), toonMat(PALETTE.SAND));
+    crownMesh.position.set(0, 0.3, -0.02);
+    addAnimeOutline(crownMesh, 1.05, PALETTE.GOLD_BORDER);
+    this.headPivot.add(crownMesh);
+
+    // 3. Articulated Left & Right Arms + 3rd-Person Vandal Rifle
+    this.leftArmPivot = new THREE.Group();
+    this.leftArmPivot.position.set(-0.3, 0.4, 0);
+    const leftArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.52, 8), toonMat(PALETTE.MAY_ROBE));
+    leftArmMesh.position.y = -0.22;
+    addAnimeOutline(leftArmMesh, 1.07);
+    this.leftArmPivot.add(leftArmMesh);
+    this.torsoPivot.add(this.leftArmPivot);
+
+    this.rightArmPivot = new THREE.Group();
+    this.rightArmPivot.position.set(0.3, 0.4, 0);
+    const rightArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.52, 8), toonMat(PALETTE.MAY_ROBE));
+    rightArmMesh.position.y = -0.22;
+    addAnimeOutline(rightArmMesh, 1.07);
+    this.rightArmPivot.add(rightArmMesh);
+
+    this.tpsVandal = createVandalRifleMesh();
+    this.tpsVandal.gun.scale.setScalar(0.85);
+    this.tpsVandal.gun.position.set(0.0, -0.35, 0.28);
+    this.rightArmPivot.add(this.tpsVandal.gun);
+    this.torsoPivot.add(this.rightArmPivot);
+
+    // 4. Articulated Left & Right Legs (Thigh + High Anime Boots)
+    this.leftLegPivot = new THREE.Group();
+    this.leftLegPivot.position.set(-0.13, 0.72, 0);
+    const leftLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.06, 0.7, 10), toonMat(0x1b1530));
+    leftLegMesh.position.y = -0.35;
+    addAnimeOutline(leftLegMesh, 1.07, PALETTE.GOLD_BORDER);
+    this.leftLegPivot.add(leftLegMesh);
+    this.charRig.add(this.leftLegPivot);
+
+    this.rightLegPivot = new THREE.Group();
+    this.rightLegPivot.position.set(0.13, 0.72, 0);
+    const rightLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.06, 0.7, 10), toonMat(0x1b1530));
+    rightLegMesh.position.y = -0.35;
+    addAnimeOutline(rightLegMesh, 1.07, PALETTE.GOLD_BORDER);
+    this.rightLegPivot.add(rightLegMesh);
+    this.charRig.add(this.rightLegPivot);
+
+    // 5. Genshin Elemental Dash Wind Vortex Ring around Character
+    const windRingGeo = new THREE.TorusGeometry(0.95, 0.045, 8, 28);
+    this.dashWindRingMat = new THREE.MeshBasicMaterial({
+      color: PALETTE.MEMORIA_CYAN,
+      transparent: true,
+      opacity: 0.0,
+    });
+    this.dashWindRing = new THREE.Mesh(windRingGeo, this.dashWindRingMat);
+    this.dashWindRing.rotation.x = Math.PI / 2;
+    this.dashWindRing.position.y = 0.9;
+    this.mayGroup.add(this.dashWindRing);
+
+    // Orbiting Wind Charm Talisman
+    const charmOrbitGeo = new THREE.BoxGeometry(0.24, 0.42, 0.04);
+    const charmOrbitMat = new THREE.MeshBasicMaterial({ color: PALETTE.MAY_SCARF });
+    this.activeCharmMesh = new THREE.Mesh(charmOrbitGeo, charmOrbitMat);
+    addAnimeOutline(this.activeCharmMesh, 1.15, PALETTE.GOLD_BORDER);
+    this.activeCharmMesh.visible = false;
+    this.mayGroup.add(this.activeCharmMesh);
+
+    this.mayLight = new THREE.PointLight(PALETTE.LANTERN_LIT, 2.4, 14, 1.5);
+    this.mayLight.position.set(0, 1.6, 0.55);
+    this.mayGroup.add(this.mayLight);
+
+    this.scene.add(this.mayGroup);
+  }
+
+  _animateCharacterRunAndDash(dt, elapsedSec) {
+    const p = this.sim.player;
+    const speedXZ = Math.hypot(p.vel[0], p.vel[2]);
+    const isMoving = speedXZ > 0.25;
+    const isDashing = this.sim.dash_active_ticks > 0;
+
+    if (isDashing) {
+      // Genshin Impact Elemental Sprint / Lunge Pose + Vortex Ring
+      this.torsoPivot.rotation.x = 0.62;
+      this.leftLegPivot.rotation.x = -0.65;
+      this.rightLegPivot.rotation.x = 0.55;
+      this.leftArmPivot.rotation.x = 0.85;
+      this.rightArmPivot.rotation.x = -0.5;
+      this.leftCoatTail.rotation.x = 0.75;
+      this.rightCoatTail.rotation.x = 0.75;
+      this.leftHairTail.rotation.x = Math.PI * 0.62;
+      this.rightHairTail.rotation.x = Math.PI * 0.62;
+
+      this.dashWindRingMat.opacity = 0.85;
+      this.dashWindRing.rotation.z = elapsedSec * 14.0;
+      this.dashWindRing.scale.setScalar(1.0 + Math.sin(elapsedSec * 25) * 0.15);
+    } else if (isMoving) {
+      // Dynamic Run Cycle Animation (Legs, Arms, Hair Tails, Coat Tails)
+      this.walkCyclePhase += dt * speedXZ * 2.4;
+      const swing = Math.sin(this.walkCyclePhase);
+      const counterSwing = Math.cos(this.walkCyclePhase);
+
+      this.torsoPivot.rotation.x = 0.16;
+      this.torsoPivot.position.y = 0.88 + Math.abs(swing) * 0.08;
+      this.leftLegPivot.rotation.x = swing * 0.82;
+      this.rightLegPivot.rotation.x = -swing * 0.82;
+      this.leftArmPivot.rotation.x = -swing * 0.65;
+      // Right arm holds the Vandal rifle aimed forward with slight run bounce
+      this.rightArmPivot.rotation.x = -0.65 + counterSwing * 0.15;
+
+      this.leftCoatTail.rotation.x = 0.28 + Math.abs(swing) * 0.25;
+      this.rightCoatTail.rotation.x = 0.28 + Math.abs(counterSwing) * 0.25;
+      this.leftHairTail.rotation.x = Math.PI * 0.8 + Math.abs(swing) * 0.22;
+      this.rightHairTail.rotation.x = Math.PI * 0.8 + Math.abs(counterSwing) * 0.22;
+      this.dashWindRingMat.opacity = 0.0;
+    } else {
+      // Idle Breathing Pose
+      const breath = Math.sin(elapsedSec * 3.0) * 0.04;
+      this.torsoPivot.rotation.x = breath;
+      this.torsoPivot.position.y = 0.88 + breath * 0.3;
+      this.leftLegPivot.rotation.x = 0;
+      this.rightLegPivot.rotation.x = 0;
+      this.leftArmPivot.rotation.x = breath;
+      this.rightArmPivot.rotation.x = -0.55;
+      this.leftCoatTail.rotation.x = 0.08;
+      this.rightCoatTail.rotation.x = 0.08;
+      this.leftHairTail.rotation.x = Math.PI * 0.88;
+      this.rightHairTail.rotation.x = Math.PI * 0.88;
+      this.dashWindRingMat.opacity = 0.0;
+    }
+
+    // First-Person Vandal Viewmodel Bob, Dash Tilt & Recoil Recovery
+    if (this.fpsWeaponPivot) {
+      const bobX = isMoving ? Math.cos(this.walkCyclePhase * 0.5) * 0.018 : 0;
+      const bobY = isMoving ? Math.abs(Math.sin(this.walkCyclePhase)) * 0.022 : Math.sin(elapsedSec * 2.5) * 0.005;
+      const dashRoll = isDashing ? -0.42 : 0;
+      const dashZ = isDashing ? -0.1 : 0;
+
+      this.fpsWeaponPivot.position.set(
+        this.fpsBasePos.x + bobX,
+        this.fpsBasePos.y + bobY,
+        this.fpsBasePos.z + dashZ + this.fpsRecoilOffset.z
+      );
+      this.fpsWeaponPivot.rotation.set(
+        this.fpsRecoilOffset.pitch,
+        0,
+        dashRoll + this.fpsRecoilOffset.roll
+      );
+    }
+  }
+
+  _triggerGenshinDashAnim() {
+    // 1. Screen speed-lines & cyan-gold elemental flash
+    anime.remove("#genshin-dash-fx");
+    anime({
+      targets: "#genshin-dash-fx",
+      opacity: [0.95, 0],
+      duration: 380,
+      easing: "easeOutQuad",
+    });
+
+    // 2. 360-degree Genshin aerial dash spin on character rig
+    anime.remove(this.charRig.rotation);
+    anime({
+      targets: this.charRig.rotation,
+      y: [0, Math.PI * 2],
+      duration: 240,
+      easing: "easeOutCubic",
+      complete: () => {
+        this.charRig.rotation.y = 0;
+      },
+    });
+
+    // 3. Spawn glowing translucent afterimage clone at dash start position
+    const p = this.sim.player;
+    const ghostGeo = new THREE.ConeGeometry(0.45, 1.45, 10);
+    const ghostMat = new THREE.MeshBasicMaterial({
+      color: PALETTE.MEMORIA_CYAN,
+      transparent: true,
+      opacity: 0.65,
+    });
+    const ghost = new THREE.Mesh(ghostGeo, ghostMat);
+    ghost.position.set(p.pos[0], p.pos[1] + 0.75, p.pos[2]);
+    this.scene.add(ghost);
+    anime({
+      targets: ghostMat,
+      opacity: [0.65, 0],
+      duration: 420,
+      easing: "easeOutQuad",
+      complete: () => {
+        this.scene.remove(ghost);
+        ghostGeo.dispose();
+        ghostMat.dispose();
+      },
+    });
+  }
+
+  // --- Valorant Vandal Shooting, Reloading & Floor Ammo Magazines ---
+
+  _spawnFloorMagazinesForNight(night) {
+    for (const m of this.floorMagazines) {
+      this.islandRoot.remove(m.group);
+    }
+    this.floorMagazines = [];
+
+    const magCoords =
+      night === 1
+        ? [
+            [8, 0, 8],
+            [-8, 0, 8],
+            [8, 0, -8],
+            [-8, 0, -8],
+            [18, 0, 0],
+            [-18, 0, 0],
+            [0, 0, 16],
+            [0, 0, -16],
+          ]
+        : night === 2
+        ? [
+            [10, 0, 6],
+            [-10, 0, -6],
+            [30, 0, 0],
+            [40, 0, 0],
+            [60, 0, 8],
+            [80, 0, -8],
+            [70, 0, 12],
+            [70, 0, -12],
+          ]
+        : [
+            [10, 0, 10],
+            [-10, 0, 10],
+            [14, 0, -14],
+            [-14, 0, -14],
+            [15, 3, 12],
+            [-15, 3, 12],
+            [4, 6, 4],
+            [-4, 6, -4],
+          ];
+
+    for (let i = 0; i < magCoords.length; i++) {
+      const [x, y, z] = magCoords[i];
+      const group = new THREE.Group();
+
+      // Glowing floor pad
+      const padRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.55, 0.72, 24),
+        new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide })
+      );
+      padRing.rotation.x = -Math.PI / 2;
+      padRing.position.y = 0.05;
+      group.add(padRing);
+
+      // 3D Curved Vandal Ammo Magazine Box
+      const magMesh = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.46, 0.26), toonMat(0x1e2436));
+      addAnimeOutline(body, 1.1, 0x00ffcc);
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.14, 0.28),
+        new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER })
+      );
+      magMesh.add(body, stripe);
+      magMesh.position.y = 0.55;
+      magMesh.rotation.z = 0.25;
+      group.add(magMesh);
+
+      group.position.set(x, y, z);
+      this.islandRoot.add(group);
+      this.floorMagazines.push({
+        id: `MAG_${i + 1}`,
+        pos: [x, y, z],
+        group,
+        magMesh,
+        available: true,
+        respawnSec: 0,
+      });
+    }
+  }
+
+  _updateFloorMagazines(dt, elapsedSec) {
+    const p = this.sim.player;
+    for (const mag of this.floorMagazines) {
+      if (!mag.available) {
+        mag.respawnSec -= dt;
+        if (mag.respawnSec <= 0) {
+          mag.available = true;
+          mag.group.visible = true;
+        }
+        continue;
+      }
+      mag.magMesh.rotation.y = elapsedSec * 2.8;
+      mag.magMesh.position.y = 0.55 + Math.sin(elapsedSec * 3.5) * 0.12;
+
+      if (distXZ(p.pos, mag.pos) <= 1.5 && Math.abs(p.pos[1] - mag.pos[1]) <= 1.6) {
+        mag.available = false;
+        mag.group.visible = false;
+        mag.respawnSec = 10.0;
+        this.vandalReserve += 25;
+        this.vandalMagsPicked += 1;
+        this.audio.playAmmoPickup();
+        this._updateVandalHUD();
+      }
+    }
+  }
+
+  _shootVandal() {
+    if (!this.started || this.sim.state !== "playing" || this.isReloading) return;
+    const now = performance.now();
+    if (now - this.lastShotTime < 105) return; // Vandal 9.5 rounds/sec fire rate
+
+    if (this.vandalClip <= 0) {
+      this._reloadVandal();
+      return;
+    }
+
+    this.lastShotTime = now;
+    this.vandalClip -= 1;
+    this.audio.playVandalShot();
+    this._updateVandalHUD();
+
+    // 1. Anime.js Vandal Recoil Kick & Muzzle Flash
+    this.fpsVandal.flashMat.opacity = 1.0;
+    anime.remove(this.fpsVandal.flashMat);
+    anime({
+      targets: this.fpsVandal.flashMat,
+      opacity: [1.0, 0.0],
+      duration: 75,
+      easing: "linear",
+    });
+
+    anime.remove(this.fpsRecoilOffset);
+    anime({
+      targets: this.fpsRecoilOffset,
+      z: [0.065, 0],
+      pitch: [0.08, 0],
+      roll: [(Math.random() - 0.5) * 0.04, 0],
+      duration: 140,
+      easing: "easeOutQuad",
+    });
+
+    // 2. Compute Aim Ray & Spawn 3D Bullet Tracer + Ejected Magazine/Casing
+    const p = this.sim.player;
+    const yawRad = (this.camYawDeg * Math.PI) / 180.0;
+    const dirX = Math.sin(yawRad);
+    const dirZ = Math.cos(yawRad);
+    const startPos = new THREE.Vector3(p.pos[0] + dirX * 0.6, p.pos[1] + 1.35, p.pos[2] + dirZ * 0.6);
+    const endPos = new THREE.Vector3(p.pos[0] + dirX * 32.0, p.pos[1] + 1.35, p.pos[2] + dirZ * 32.0);
+
+    // Check hit against Shades (Bóng Mực) and Drifters (Gió Lạc) along the shot ray
+    let hitTarget = null;
+    let bestDist = 32.0;
+
+    for (const s of this.sim.shades) {
+      const toX = s.pos[0] - p.pos[0];
+      const toZ = s.pos[2] - p.pos[2];
+      const proj = toX * dirX + toZ * dirZ;
+      if (proj > 0 && proj < bestDist) {
+        const perp = Math.abs(toX * dirZ - toZ * dirX);
+        if (perp <= 1.25 && Math.abs(s.pos[1] - p.pos[1]) <= 2.2) {
+          bestDist = proj;
+          hitTarget = { kind: "shade", entity: s };
+        }
+      }
+    }
+
+    if (hitTarget) {
+      const s = hitTarget.entity;
+      endPos.set(s.pos[0], s.pos[1] + 0.8, s.pos[2]);
+      s.state = "stunned";
+      s.state_ticks_left = Math.max(s.state_ticks_left || 0, 75);
+      s.pos[0] += dirX * 1.35;
+      s.pos[2] += dirZ * 1.35;
+      this.sim._enforceSafeZonesForShade(s);
+
+      // Flash Valorant Red Hitmarker
+      anime.remove("#fps-hitmarker");
+      anime({
+        targets: "#fps-hitmarker",
+        opacity: [1, 0],
+        scale: [1.3, 1.0],
+        duration: 180,
+        easing: "easeOutQuad",
+      });
+    }
+
+    // 3D Glowing Bullet Tracer Line
+    const pts = [startPos, endPos];
+    const tracerGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    const tracerMat = new THREE.LineBasicMaterial({
+      color: PALETTE.GOLD_BORDER,
+      transparent: true,
+      opacity: 0.95,
+    });
+    const tracerLine = new THREE.Line(tracerGeo, tracerMat);
+    this.scene.add(tracerLine);
+    anime({
+      targets: tracerMat,
+      opacity: [0.95, 0],
+      duration: 130,
+      easing: "easeOutQuad",
+      complete: () => {
+        this.scene.remove(tracerLine);
+        tracerGeo.dispose();
+        tracerMat.dispose();
+      },
+    });
+
+    if (this.vandalClip === 0 && this.vandalReserve > 0) {
+      this._reloadVandal();
+    }
+  }
+
+  _reloadVandal() {
+    if (this.isReloading || this.vandalClip >= this.vandalClipMax || this.vandalReserve <= 0) return;
+    this.isReloading = true;
+    this.audio.playReload();
+    this._updateVandalHUD();
+
+    // Animate the 3D Vandal Magazine detaching & snapping a fresh magazine in
+    const mag = this.fpsVandal.magGroup;
+    anime
+      .timeline({
+        complete: () => {
+          const needed = this.vandalClipMax - this.vandalClip;
+          const take = Math.min(needed, this.vandalReserve);
+          this.vandalClip += take;
+          this.vandalReserve -= take;
+          this.isReloading = false;
+          this._updateVandalHUD();
+        },
+      })
+      .add({
+        targets: mag.position,
+        y: [-0.2, -0.58],
+        duration: 240,
+        easing: "easeInQuad",
+      })
+      .add({
+        targets: mag.position,
+        y: [-0.58, -0.2],
+        duration: 280,
+        delay: 140,
+        easing: "easeOutBack",
+      });
+  }
+
+  _updateVandalHUD() {
+    document.getElementById("vandal-clip").textContent = this.vandalClip;
+    document.getElementById("vandal-reserve").textContent = this.vandalReserve;
+    document.getElementById("vandal-mags-picked").textContent = this.vandalMagsPicked;
+    const badge = document.getElementById("vandal-state-badge");
+    if (this.isReloading) {
+      badge.textContent = "ĐANG THAY BĂNG ĐẠN...";
+      badge.style.color = "#FFB347";
+    } else if (this.vandalClip === 0 && this.vandalReserve === 0) {
+      badge.textContent = "HẾT ĐẠN — NHẶT BĂNG ĐẠN!";
+      badge.style.color = "#FF5A5F";
+    } else {
+      badge.textContent = "SẴN SÀNG";
+      badge.style.color = "#00ffcc";
+    }
+  }
+
+  toggleCameraMode(forceFirstPerson = null) {
+    this.firstPerson = forceFirstPerson !== null ? forceFirstPerson : !this.firstPerson;
+    this._updateCameraModeUI();
+  }
+
+  _updateCameraModeUI() {
+    const btn = document.getElementById("btn-cam-mode");
+    if (btn) {
+      btn.textContent = this.firstPerson ? "🎥 Góc Nhìn: FPS (1st) [V]" : "🎥 Góc Nhìn: TPS (3rd) [V]";
+      btn.classList.toggle("active", this.firstPerson);
+    }
+    const ch = document.getElementById("fps-crosshair");
+    if (ch) ch.classList.toggle("hidden", !this.firstPerson);
+    if (this.fpsWeaponPivot) this.fpsWeaponPivot.visible = this.firstPerson;
+    if (this.charRig) this.charRig.visible = !this.firstPerson;
+  }
+
   _buildSeaOfCloudsAndStars() {
-    // Sea of Clouds (#12384A)
     this.cloudsGroup = new THREE.Group();
     const seaPlaneGeo = new THREE.PlaneGeometry(360, 360);
     const seaPlaneMat = new THREE.MeshBasicMaterial({
@@ -264,7 +936,7 @@ class AnimeThreeIslandsApp {
     }
     this.scene.add(this.cloudsGroup);
 
-    // Creative Addition: Cloud Koi (Cá Mây) swimming under the clouds
+    // Cloud Koi (Cá Mây)
     this.koiGroup = new THREE.Group();
     const koiGeo = new THREE.ConeGeometry(0.45, 1.6, 8);
     const koiMat = new THREE.MeshBasicMaterial({ color: PALETTE.GOLD_BORDER });
@@ -327,61 +999,7 @@ class AnimeThreeIslandsApp {
     this.scene.add(this.windLeavesGroup);
   }
 
-  _buildPlayerMay() {
-    // Mây: Áo Mây #E8E2D0, Khăn Mây #C8102E, Nón lá + Đèn lồng nhỏ
-    this.mayGroup = new THREE.Group();
-
-    const robeGeo = new THREE.ConeGeometry(0.52, 1.15, 14);
-    const robeMesh = new THREE.Mesh(robeGeo, toonMat(PALETTE.MAY_ROBE));
-    robeMesh.position.y = 0.62;
-    robeMesh.castShadow = true;
-    addAnimeOutline(robeMesh, 1.07);
-    this.mayGroup.add(robeMesh);
-
-    const scarfGeo = new THREE.TorusGeometry(0.31, 0.09, 8, 16);
-    this.scarfMat = toonMat(PALETTE.MAY_SCARF);
-    const scarfMesh = new THREE.Mesh(scarfGeo, this.scarfMat);
-    scarfMesh.rotation.x = Math.PI / 2;
-    scarfMesh.position.y = 1.12;
-    addAnimeOutline(scarfMesh, 1.08);
-    this.mayGroup.add(scarfMesh);
-
-    const headGeo = new THREE.SphereGeometry(0.32, 14, 14);
-    const headMesh = new THREE.Mesh(headGeo, toonMat(0xffdfc4));
-    headMesh.position.y = 1.38;
-    addAnimeOutline(headMesh, 1.07);
-    this.mayGroup.add(headMesh);
-
-    const hatGeo = new THREE.ConeGeometry(0.78, 0.46, 20);
-    const hatMesh = new THREE.Mesh(hatGeo, toonMat(PALETTE.SAND));
-    hatMesh.position.set(0, 1.72, -0.02);
-    hatMesh.rotation.x = -0.08;
-    addAnimeOutline(hatMesh, 1.05);
-    this.mayGroup.add(hatMesh);
-
-    const miniGeo = new THREE.OctahedronGeometry(0.14, 0);
-    this.miniLanternMat = new THREE.MeshBasicMaterial({ color: PALETTE.LANTERN_CORE });
-    this.miniLanternMesh = new THREE.Mesh(miniGeo, this.miniLanternMat);
-    this.miniLanternMesh.position.set(0, 1.5, 0.65);
-    this.mayGroup.add(this.miniLanternMesh);
-
-    // Orbiting Wind Charm Talisman when charm_ticks > 0
-    const charmOrbitGeo = new THREE.BoxGeometry(0.24, 0.42, 0.04);
-    const charmOrbitMat = new THREE.MeshBasicMaterial({ color: PALETTE.MAY_SCARF });
-    this.activeCharmMesh = new THREE.Mesh(charmOrbitGeo, charmOrbitMat);
-    addAnimeOutline(this.activeCharmMesh, 1.15, PALETTE.GOLD_BORDER);
-    this.activeCharmMesh.visible = false;
-    this.mayGroup.add(this.activeCharmMesh);
-
-    this.mayLight = new THREE.PointLight(PALETTE.LANTERN_LIT, 2.2, 13, 1.5);
-    this.mayLight.position.set(0, 1.6, 0.55);
-    this.mayGroup.add(this.mayLight);
-
-    this.scene.add(this.mayGroup);
-  }
-
   _buildOngDangNPC() {
-    // Creative Addition: Ông Đăng (Elder Lantern Keeper NPC at start plaza, purely visual)
     const npc = new THREE.Group();
     const robe = new THREE.Mesh(new THREE.ConeGeometry(0.58, 1.35, 12), toonMat(PALETTE.WOOD));
     robe.position.y = 0.68;
@@ -416,7 +1034,6 @@ class AnimeThreeIslandsApp {
   }
 
   _rebuildNightWorld(night) {
-    // Clear previous island & dynamic entity meshes
     while (this.islandRoot.children.length > 0) {
       this.islandRoot.remove(this.islandRoot.children[0]);
     }
@@ -432,48 +1049,36 @@ class AnimeThreeIslandsApp {
     this.charmMeshes.clear();
 
     if (night === 1) {
-      // Đêm 1 — Đảo Bến (R = 40 m)
       const grass = new THREE.Mesh(new THREE.CylinderGeometry(38.5, 39.2, 1.4, 56), toonMat(PALETTE.GRASS));
       grass.position.y = -0.7;
-      grass.receiveShadow = true;
       this.islandRoot.add(grass);
 
       const sandRim = new THREE.Mesh(new THREE.CylinderGeometry(40.0, 40.5, 1.2, 56), toonMat(PALETTE.SAND));
       sandRim.position.y = -0.75;
       this.islandRoot.add(sandRim);
     } else if (night === 2) {
-      // Đêm 2 — Đảo Cau (2 Islands R = 28 m at (0,0,0) and (70,0,0) + Bamboo Bridge x in [26,44], z in [-2,2])
       for (const cx of [0, 70]) {
         const grass = new THREE.Mesh(new THREE.CylinderGeometry(26.8, 27.4, 1.4, 48), toonMat(PALETTE.GRASS));
         grass.position.set(cx, -0.7, 0);
-        grass.receiveShadow = true;
         this.islandRoot.add(grass);
 
         const sand = new THREE.Mesh(new THREE.CylinderGeometry(28.0, 28.5, 1.2, 48), toonMat(PALETTE.SAND));
         sand.position.set(cx, -0.75, 0);
         this.islandRoot.add(sand);
       }
-      // Bamboo Bridge (#6B4A2F)
-      const bridgeGroup = new THREE.Group();
       const bridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(18.4, 0.28, 4.0), toonMat(PALETTE.WOOD));
       bridgeDeck.position.set(35.0, -0.14, 0.0);
-      bridgeDeck.receiveShadow = true;
       addAnimeOutline(bridgeDeck, 1.03);
-      bridgeGroup.add(bridgeDeck);
-      this.islandRoot.add(bridgeGroup);
+      this.islandRoot.add(bridgeDeck);
     } else if (night === 3) {
-      // Đêm 3 — Đảo Chuông (R = 45 m, 3 Tiers + 2 Ramps + 8m Bell Tower)
-      // Tier 0 (Y = 0, R = 45 m)
       const tier0 = new THREE.Mesh(new THREE.CylinderGeometry(43.8, 44.5, 1.4, 60), toonMat(PALETTE.GRASS));
       tier0.position.y = -0.7;
-      tier0.receiveShadow = true;
       this.islandRoot.add(tier0);
 
       const sand0 = new THREE.Mesh(new THREE.CylinderGeometry(45.0, 45.5, 1.2, 60), toonMat(PALETTE.SAND));
       sand0.position.y = -0.75;
       this.islandRoot.add(sand0);
 
-      // Tier 1 (Y = 3, Ring R in [12, 24], z > 0 -> thetaStart = 0, thetaLength = PI)
       const shape1 = new THREE.Shape();
       shape1.absarc(0, 0, 24.0, 0, Math.PI, false);
       const hole1 = new THREE.Path();
@@ -483,10 +1088,8 @@ class AnimeThreeIslandsApp {
       const tier1Mesh = new THREE.Mesh(extrude1, toonMat(PALETTE.GRASS));
       tier1Mesh.rotation.x = Math.PI / 2;
       tier1Mesh.position.y = 3.0;
-      tier1Mesh.receiveShadow = true;
       this.islandRoot.add(tier1Mesh);
 
-      // 2 Straight Ramps (30° and 150°, width 3m, R=30 at Y=0 to R=24 at Y=3)
       const rampLen = Math.hypot(6.0, 3.0);
       const rampSlope = Math.atan2(3.0, 6.0);
       for (const deg of [30, 150]) {
@@ -500,13 +1103,10 @@ class AnimeThreeIslandsApp {
         this.islandRoot.add(rampMesh);
       }
 
-      // Tier 2 (Y = 6, Disk R = 8 m at center)
       const tier2 = new THREE.Mesh(new THREE.CylinderGeometry(8.0, 8.0, 0.6, 36), toonMat(PALETTE.SAND));
       tier2.position.y = 5.7;
-      tier2.receiveShadow = true;
       this.islandRoot.add(tier2);
 
-      // Bell Tower (Tháp Chuông: height 8m on Tier 2, cylinder R = 2m)
       const tower = new THREE.Group();
       const towerBody = new THREE.Mesh(new THREE.CylinderGeometry(1.85, 2.0, 6.5, 12), toonMat(PALETTE.WOOD));
       towerBody.position.y = 9.25;
@@ -520,7 +1120,6 @@ class AnimeThreeIslandsApp {
       this.islandRoot.add(tower);
     }
 
-    // Build Jump Pads for current Night
     for (const pad of this.sim.mapCfg.jump_pads) {
       const padGroup = new THREE.Group();
       const disc = new THREE.Mesh(
@@ -539,11 +1138,14 @@ class AnimeThreeIslandsApp {
       this.islandRoot.add(padGroup);
     }
 
-    // Add Ông Đăng NPC at start plaza
     this.islandRoot.add(this._buildOngDangNPC());
+    this._spawnFloorMagazinesForNight(night);
 
-    // Update HUD Night Label & active buttons
-    const names = { 1: "ĐÊM 1 · ĐẢO BẾN", 2: "ĐÊM 2 · ĐẢO CAU", 3: "ĐÊM 3 · ĐẢO CHUÔNG" };
+    const names = {
+      1: "ĐÊM 1 · ĐẢO BẾN · EVERNIGHT (HSR)",
+      2: "ĐÊM 2 · ĐẢO CAU · EVERNIGHT (HSR)",
+      3: "ĐÊM 3 · ĐẢO CHUÔNG · EVERNIGHT (HSR)",
+    };
     document.getElementById("hud-night-label").textContent = names[night] || "ĐẢO ĐÈN LỒNG";
     [1, 2, 3].forEach((n) => {
       const btn = document.getElementById(`btn-night-${n}`);
@@ -592,6 +1194,7 @@ class AnimeThreeIslandsApp {
 
     const light = new THREE.PointLight(PALETTE.LANTERN_LIT, 0, 22, 1.4);
     light.position.y = 3.4;
+    light.visible = false;
     group.add(light);
 
     group.position.set(lData.pos[0], lData.pos[1], lData.pos[2]);
@@ -600,27 +1203,25 @@ class AnimeThreeIslandsApp {
   }
 
   _createMoteMesh(mData) {
+    // Memoria (HSR Memory Crystal): Faceted Octahedron Prism + Orbiting Memory Ring
     const group = new THREE.Group();
-    const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.22, 10, 10),
-      new THREE.MeshBasicMaterial({ color: PALETTE.MOTE_CORE })
+    const crystal = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.28, 0),
+      new THREE.MeshBasicMaterial({ color: mData.kind === "dropped" ? PALETTE.LANTERN_LIT : PALETTE.MEMORIA_CYAN })
     );
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.42, 10, 10),
-      new THREE.MeshBasicMaterial({
-        color: mData.kind === "dropped" ? PALETTE.LANTERN_LIT : PALETTE.MOTE_HALO,
-        transparent: true,
-        opacity: 0.42,
-      })
+    addAnimeOutline(crystal, 1.18, PALETTE.MEMORIA_VIOLET);
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.42, 0.03, 6, 18),
+      new THREE.MeshBasicMaterial({ color: PALETTE.MOTE_CORE, transparent: true, opacity: 0.7 })
     );
-    group.add(core, halo);
-    group.position.set(mData.pos[0], mData.pos[1] + 0.65, mData.pos[2]);
+    group.add(crystal, ring);
+    group.position.set(mData.pos[0], mData.pos[1] + 0.75, mData.pos[2]);
     this.scene.add(group);
-    return { group, phase: Math.random() * Math.PI * 2 };
+    return { group, crystal, ring, phase: Math.random() * Math.PI * 2 };
   }
 
   _createShadeMesh(sData) {
-    // Bóng Mực: thân #120A1A, viền #7A3CFF, bị choáng #3A3450
     const group = new THREE.Group();
     const bodyMat = toonMat(PALETTE.SHADE_BODY);
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 14), bodyMat);
@@ -656,9 +1257,8 @@ class AnimeThreeIslandsApp {
   }
 
   _createDrifterMesh(dData) {
-    // Gió Lạc (#8FA3B8): swirling silk spirit ribbon
     const group = new THREE.Group();
-    const silkGeo = new THREE.TorusKnotGeometry(0.45, 0.11, 36, 8, 2, 3);
+    const silkGeo = new THREE.TorusKnotGeometry(0.45, 0.11, 32, 8, 2, 3);
     const silkMat = toonMat(PALETTE.DRIFTER, { transparent: true, opacity: 0.9 });
     const silk = new THREE.Mesh(silkGeo, silkMat);
     silk.position.y = 1.25;
@@ -670,7 +1270,6 @@ class AnimeThreeIslandsApp {
   }
 
   _createCharmMesh(cData) {
-    // Bùa Gió: lá bùa đỏ #C8102E viền vàng #F2C14E
     const group = new THREE.Group();
     const card = new THREE.Mesh(
       new THREE.BoxGeometry(0.48, 0.85, 0.08),
@@ -684,16 +1283,16 @@ class AnimeThreeIslandsApp {
     return { group, card };
   }
 
-  _syncEntities(elapsedSec) {
+  _syncEntities(elapsedSec, dt = 0.016) {
     const p = this.sim.player;
-    const isMoving = Math.hypot(p.vel[0], p.vel[2]) > 0.2;
-    const bob = p.grounded && isMoving ? Math.abs(Math.sin(elapsedSec * 12)) * 0.11 : 0;
-    this.mayGroup.position.set(p.pos[0], p.pos[1] + bob, p.pos[2]);
+    this.mayGroup.position.set(p.pos[0], p.pos[1], p.pos[2]);
     this.mayGroup.rotation.y = p.facingYaw || 0;
     this.mayGroup.visible =
       this.sim.fall_wait_ticks === 0 && (this.sim.invuln_ticks <= 0 || Math.floor(elapsedSec * 18) % 2 === 0);
 
-    // Orbiting Wind Charm visual on Mây
+    // Animate Evernight Run Cycle & Genshin Dash Pose
+    this._animateCharacterRunAndDash(dt, elapsedSec);
+
     if (this.sim.charm_ticks > 0) {
       this.activeCharmMesh.visible = true;
       this.activeCharmMesh.position.set(Math.cos(elapsedSec * 6) * 0.85, 1.25, Math.sin(elapsedSec * 6) * 0.85);
@@ -705,7 +1304,7 @@ class AnimeThreeIslandsApp {
     const carryRatio = p.carried / Math.max(1, Number(this.tuning.carry_capacity || 10));
     this.mayLight.intensity = 1.8 + carryRatio * 3.0;
 
-    // Sync Lanterns & Mandatory Ambient Light Formula: 0.15 + 0.55 * (lit / total)
+    // Sync Lanterns
     let litCount = 0;
     for (const l of this.sim.lanterns) {
       let entry = this.lanternMeshes.get(l.id);
@@ -737,9 +1336,9 @@ class AnimeThreeIslandsApp {
     const totalL = Math.max(1, this.sim.lanterns.length);
     const progress = litCount / totalL;
     this.ambientLight.intensity = 0.15 + 0.55 * progress;
-    this.scene.fog.density = 0.022 - progress * 0.012;
+    this.scene.fog.density = 0.02 - progress * 0.011;
 
-    // Sync Motes
+    // Sync Memoria Crystals (Motes)
     const activeMoteIds = new Set();
     for (const m of this.sim.motes) {
       activeMoteIds.add(m.id);
@@ -748,8 +1347,11 @@ class AnimeThreeIslandsApp {
         entry = this._createMoteMesh(m);
         this.moteMeshes.set(m.id, entry);
       }
-      const hoverY = m.pos[1] + 0.65 + Math.sin(elapsedSec * 3.5 + entry.phase) * 0.22;
+      const hoverY = m.pos[1] + 0.75 + Math.sin(elapsedSec * 3.5 + entry.phase) * 0.22;
       entry.group.position.set(m.pos[0], hoverY, m.pos[2]);
+      entry.crystal.rotation.y = elapsedSec * 2.5 + entry.phase;
+      entry.ring.rotation.x = elapsedSec * 3.0;
+      entry.ring.rotation.y = elapsedSec * 2.0;
     }
     for (const [id, entry] of this.moteMeshes.entries()) {
       if (!activeMoteIds.has(id)) {
@@ -758,7 +1360,7 @@ class AnimeThreeIslandsApp {
       }
     }
 
-    // Sync Shades (Bóng Mực: #120A1A, #7A3CFF, #3A3450 when stunned)
+    // Sync Shades
     const activeShadeIds = new Set();
     for (const s of this.sim.shades) {
       activeShadeIds.add(s.id);
@@ -784,7 +1386,7 @@ class AnimeThreeIslandsApp {
       }
     }
 
-    // Sync Drifters (Gió Lạc: #8FA3B8)
+    // Sync Drifters
     const activeDrifterIds = new Set();
     for (const d of this.sim.drifters) {
       if (d.state === "removed") continue;
@@ -796,7 +1398,6 @@ class AnimeThreeIslandsApp {
       }
       entry.group.position.set(d.pos[0], d.pos[1], d.pos[2]);
       entry.silk.rotation.y = elapsedSec * 3.5;
-      entry.silk.rotation.x = Math.sin(elapsedSec * 2) * 0.4;
     }
     for (const [id, entry] of this.drifterMeshes.entries()) {
       if (!activeDrifterIds.has(id)) {
@@ -805,7 +1406,7 @@ class AnimeThreeIslandsApp {
       }
     }
 
-    // Sync Wind Charms (Bùa Gió)
+    // Sync Wind Charms
     for (const c of this.sim.charms) {
       let entry = this.charmMeshes.get(c.id);
       if (!entry) {
@@ -814,41 +1415,30 @@ class AnimeThreeIslandsApp {
       }
       entry.group.visible = c.available;
       entry.card.rotation.y = elapsedSec * 2.5;
-      entry.card.position.y = 1.1 + Math.sin(elapsedSec * 3) * 0.18;
     }
 
-    // Animate Cloud Koi
-    for (const koi of this.cloudKoiList) {
-      const a = elapsedSec * 0.55 + koi.phase;
-      const kx = koi.cx + Math.cos(a) * koi.radius;
-      const kz = Math.sin(a) * koi.radius;
-      const ky = -2.6 + Math.sin(elapsedSec * 2 + koi.phase) * 0.8;
-      koi.mesh.position.set(kx, ky, kz);
-      koi.mesh.rotation.z = -a;
-    }
+    // Update Floor Vandal Magazines
+    this._updateFloorMagazines(dt, elapsedSec);
 
-    // Animate Night 3 Wind Leaves
-    const showWind = this.sim.wind_active || this.sim.wind_warning;
-    this.windLeavesGroup.visible = showWind;
-    if (showWind) {
-      const wrad = (this.sim.wind_dir_deg * Math.PI) / 180.0;
-      const wx = Math.cos(wrad) * 0.35;
-      const wz = Math.sin(wrad) * 0.35;
-      for (const leaf of this.windLeaves) {
-        leaf.position.x = ((leaf.position.x + wx + 25) % 50) - 25 + p.pos[0];
-        leaf.position.z = ((leaf.position.z + wz + 25) % 50) - 25 + p.pos[2];
-        leaf.rotation.x += 0.1;
-        leaf.rotation.y += 0.08;
-      }
-    }
-
-    // Camera Follow
+    // Camera Positioning: First-Person (FPS) vs Third-Person (TPS)
     const yawRad = (this.camYawDeg * Math.PI) / 180.0;
-    const camX = p.pos[0] - Math.sin(yawRad) * this.camDist * Math.cos(this.camPitch);
-    const camZ = p.pos[2] - Math.cos(yawRad) * this.camDist * Math.cos(this.camPitch);
-    const camY = p.pos[1] + 2.4 + Math.sin(this.camPitch) * this.camDist;
-    this.camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.22);
-    this.camera.lookAt(p.pos[0], p.pos[1] + 1.3, p.pos[2]);
+    if (this.firstPerson) {
+      const speedXZ = Math.hypot(p.vel[0], p.vel[2]);
+      const headBob = speedXZ > 0.25 ? Math.sin(this.walkCyclePhase) * 0.055 : 0;
+      const eyeY = p.pos[1] + 1.52 + headBob;
+      this.camera.position.set(p.pos[0], eyeY, p.pos[2]);
+      const lookDist = 20.0;
+      const targetX = p.pos[0] + Math.sin(yawRad) * lookDist * Math.cos(this.fpsPitch);
+      const targetZ = p.pos[2] + Math.cos(yawRad) * lookDist * Math.cos(this.fpsPitch);
+      const targetY = eyeY + Math.sin(this.fpsPitch) * lookDist;
+      this.camera.lookAt(targetX, targetY, targetZ);
+    } else {
+      const camX = p.pos[0] - Math.sin(yawRad) * this.camDist * Math.cos(this.camPitch);
+      const camZ = p.pos[2] - Math.cos(yawRad) * this.camDist * Math.cos(this.camPitch);
+      const camY = p.pos[1] + 2.2 + Math.sin(this.camPitch) * this.camDist;
+      this.camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.25);
+      this.camera.lookAt(p.pos[0], p.pos[1] + 1.25, p.pos[2]);
+    }
 
     this._updateHUD(litCount);
   }
@@ -857,7 +1447,6 @@ class AnimeThreeIslandsApp {
     const p = this.sim.player;
     const cap = Number(this.tuning.carry_capacity || 10);
 
-    // 1. Flames (Top-Left)
     document.querySelectorAll("#flames-container .flame-pip").forEach((el, idx) => {
       el.classList.toggle("lost", idx >= p.flames);
     });
@@ -869,7 +1458,6 @@ class AnimeThreeIslandsApp {
       charmBadge.classList.add("hidden");
     }
 
-    // 2. Clock mm:ss (Top-Center: red & blinking when <= 30s, plus 10s countdown sound)
     const rem = Math.max(0, Math.ceil(this.sim.time_left_s));
     const mm = String(Math.floor(rem / 60)).padStart(2, "0");
     const ss = String(rem % 60).padStart(2, "0");
@@ -881,7 +1469,6 @@ class AnimeThreeIslandsApp {
       this.audio.playCountdownTick();
     }
 
-    // 3. Lanterns k/n & Score (Top-Right)
     document.getElementById("lanterns-text").textContent = `${litCount}/${this.sim.lanterns.length}`;
     document.getElementById("score-display").textContent = this.sim.score;
     const totalCampaign =
@@ -890,7 +1477,6 @@ class AnimeThreeIslandsApp {
       (this.currentNight === 3 ? this.sim.score : this.wonNightScores[3]);
     document.getElementById("total-score-display").textContent = totalCampaign;
 
-    // 4. 10-slot Firefly Bar & "E — Nạp ánh sáng (x/10)" Prompt (Bottom-Center)
     document.getElementById("carried-text").textContent = `${p.carried}/${cap}`;
     document.querySelectorAll("#motes-pills .mote-slot").forEach((el, idx) => {
       el.classList.toggle("filled", idx < p.carried);
@@ -909,7 +1495,6 @@ class AnimeThreeIslandsApp {
       promptEl.classList.remove("visible");
     }
 
-    // 5. Cooldown Icons for Dash & Pulse (Bottom-Right)
     const dashCdS = this.sim.dash_cd_ticks / 60;
     const dashBox = document.getElementById("cd-dash-box");
     const dashText = document.getElementById("cd-dash-text");
@@ -938,7 +1523,6 @@ class AnimeThreeIslandsApp {
       pulseText.textContent = "Sẵn sàng";
     }
 
-    // 6. Wind Warning Banner (Night 3)
     const windEl = document.getElementById("wind-indicator");
     if (this.sim.wind_active) {
       windEl.classList.remove("hidden");
@@ -950,7 +1534,6 @@ class AnimeThreeIslandsApp {
       windEl.classList.add("hidden");
     }
 
-    // 7. Off-screen Arrow pointing to nearest unlit lantern
     this._updateOffscreenLanternArrow();
   }
 
@@ -975,8 +1558,8 @@ class AnimeThreeIslandsApp {
     }
 
     arrowEl.classList.remove("hidden");
-    let nx = isBehind ? -ndc.x : ndc.x;
-    let ny = isBehind ? -ndc.y : ndc.y;
+    const nx = isBehind ? -ndc.x : ndc.x;
+    const ny = isBehind ? -ndc.y : ndc.y;
     const angle = Math.atan2(nx, ny);
     const margin = 58;
     const halfW = window.innerWidth / 2 - margin;
@@ -994,7 +1577,7 @@ class AnimeThreeIslandsApp {
         this.audio.playMotePickup(ev.data.carried);
       } else if (ev.name === "charm_picked") {
         this.audio.playCharmPickup();
-        this._showAnimeBanner("BÙA GIÓ KHAI MỞ!", "TỐC ĐỘ 7.2 M/S · LƯỚT KHÔNG HỒI CHIÊU (10 GIÂY)");
+        this._showAnimeBanner("BÙA GIÓ KHAI MỞ!", "TỐC ĐỘ 7.2 M/S · LƯỚT GENSHIN KHÔNG HỒI CHIÊU");
       } else if (ev.name === "deposit") {
         this.audio.playDeposit();
       } else if (ev.name === "lantern_lit") {
@@ -1011,6 +1594,7 @@ class AnimeThreeIslandsApp {
         });
       } else if (ev.name === "dash") {
         this.audio.playDash();
+        this._triggerGenshinDashAnim();
       } else if (ev.name === "jump") {
         this.audio.playJump(Boolean(ev.data && ev.data.pad));
       } else if (ev.name === "shade_spawned") {
@@ -1019,7 +1603,7 @@ class AnimeThreeIslandsApp {
         this.audio.playWindWarning();
       } else if (ev.name === "drifter_steal") {
         this.audio.playHit();
-        this._showAnimeBanner("GIÓ LẠC CƯỚP ĐOM ĐÓM!", "DÙNG TỎA SÁNG [R] ĐỂ ĐÁNH RƠI LẠI!");
+        this._showAnimeBanner("GIÓ LẠC CƯỚP MEMORIA!", "BẮN VANDAL HOẶC TỎA SÁNG [R] ĐỂ ĐÁNH RƠI LẠI!");
       } else if (ev.name === "drifter_drop") {
         this.audio.playCharmPickup();
       } else if (ev.name === "player_hit") {
@@ -1073,7 +1657,7 @@ class AnimeThreeIslandsApp {
       document.getElementById("go-subtitle").textContent = `HOÀN THÀNH ĐÊM ${this.currentNight}`;
       document.getElementById("go-title").textContent = "HÒN ĐẢO ĐÃ BỪNG SÁNG!";
       document.getElementById("go-desc").textContent =
-        `"Giỏi lắm cháu Mây! Toàn bộ Đèn Lồng trên đảo đã sáng rực. Hãy chuẩn bị tinh thần bước sang Đêm ${this.currentNight + 1} nhé!"`;
+        `"Giỏi lắm Evernight! Toàn bộ Đèn Lồng trên đảo đã được nạp đầy Memoria. Hãy chuẩn bị bước sang Đêm ${this.currentNight + 1} nhé!"`;
       nextBtn.classList.remove("hidden");
       nextBtn.textContent = `➡ Sang Đêm ${this.currentNight + 1}`;
     } else if (won && this.currentNight === 3) {
@@ -1087,7 +1671,7 @@ class AnimeThreeIslandsApp {
       document.getElementById("go-title").textContent =
         reason === "dawn" ? "BÌNH MINH ĐÃ QUA..." : "NGỌN LỬA ĐÃ TẮT...";
       document.getElementById("go-desc").textContent =
-        `"Đừng nản lòng cháu Mây! Hãy thắp lại ngọn đèn nhỏ trên nón lá và thử lại Đêm ${this.currentNight} một lần nữa!"`;
+        `"Đừng nản lòng Evernight! Hãy nạp lại băng đạn Vandal và thử lại Đêm ${this.currentNight} một lần nữa!"`;
       nextBtn.classList.add("hidden");
     }
   }
@@ -1095,8 +1679,11 @@ class AnimeThreeIslandsApp {
   selectNight(night, showIntro = true) {
     this.currentNight = Number(night) || 1;
     this.sim = new GameSimulationJS(this.tuning, 2026 + this.currentNight, this.currentNight);
+    this.vandalClip = 25;
+    this.vandalReserve = 75;
+    this._updateVandalHUD();
     this._rebuildNightWorld(this.currentNight);
-    this._syncEntities(0);
+    this._syncEntities(0, 0.016);
     document.getElementById("gameover-modal").classList.add("hidden");
     document.getElementById("pause-modal").classList.add("hidden");
     if (showIntro) {
@@ -1124,9 +1711,7 @@ class AnimeThreeIslandsApp {
 
   _computeBotInput() {
     const p = this.sim.player;
-    const closeShade = this.sim.shades.find(
-      (s) => s.state !== "stunned" && distXZ(p.pos, s.pos) <= 4.0
-    );
+    const closeShade = this.sim.shades.find((s) => s.state !== "stunned" && distXZ(p.pos, s.pos) <= 4.0);
     const stolenDrifter = this.sim.drifters.find(
       (d) => d.state !== "removed" && distXZ(p.pos, d.pos) <= 4.5 && (d.state === "chase" || d.stolen > 0)
     );
@@ -1135,9 +1720,7 @@ class AnimeThreeIslandsApp {
     );
 
     const unlit = this.sim.lanterns.filter((l) => !l.lit);
-    const nearLantern = unlit.find(
-      (l) => distXZ(p.pos, l.pos) <= 1.85 && Math.abs(p.pos[1] - l.pos[1]) <= 1.8
-    );
+    const nearLantern = unlit.find((l) => distXZ(p.pos, l.pos) <= 1.85 && Math.abs(p.pos[1] - l.pos[1]) <= 1.8);
     const wantInteract = Boolean(nearLantern && p.carried > 0 && !this.sim.input_state.interact);
 
     let targetPos = [0, 0, 0];
@@ -1153,7 +1736,6 @@ class AnimeThreeIslandsApp {
         const sorted = [...pool].sort((a, b) => distXZ(p.pos, a.pos) - distXZ(p.pos, b.pos));
         targetPos = sorted[0].pos;
       }
-      // On Night 2, if target is on the other island, cross via bridge x in [26, 44], z = 0
       if (this.currentNight === 2) {
         const onIslandA = p.pos[0] < 26.5;
         const onIslandB = p.pos[0] > 43.5;
@@ -1168,6 +1750,12 @@ class AnimeThreeIslandsApp {
     if (d > 0.1) {
       vx /= d;
       vz /= d;
+      this.camYawDeg = (Math.atan2(vx, vz) * 180.0) / Math.PI;
+    }
+
+    // Bot automatically fires Vandal at nearby active shades
+    if (this.sim.shades.some((s) => s.state !== "stunned" && distXZ(p.pos, s.pos) <= 14.0)) {
+      this._shootVandal();
     }
 
     const theta = (this.camYawDeg * Math.PI) / 180.0;
@@ -1181,7 +1769,9 @@ class AnimeThreeIslandsApp {
       mz /= mag;
     }
 
-    const wantDash = Boolean(d > 8.0 && this.sim.dash_cd_ticks === 0 && this.sim.dash_active_ticks === 0 && !this.sim.input_state.dash);
+    const wantDash = Boolean(
+      d > 7.5 && this.sim.dash_cd_ticks === 0 && this.sim.dash_active_ticks === 0 && !this.sim.input_state.dash
+    );
 
     return {
       move: [mx, mz],
@@ -1217,6 +1807,9 @@ class AnimeThreeIslandsApp {
       if (code === "KeyR") this.pendingPulse = true;
       if (code === "ShiftLeft" || code === "ShiftRight") this.pendingDash = true;
       if (code === "Escape" || code === "KeyP") this.pendingPause = true;
+      if (code === "KeyV") this.toggleCameraMode();
+      if (code === "KeyG") this._reloadVandal();
+      if (code === "KeyB") this._shootVandal();
     });
 
     window.addEventListener("keyup", (e) => {
@@ -1225,9 +1818,14 @@ class AnimeThreeIslandsApp {
 
     let dragging = false;
     let lastX = 0;
+    let lastY = 0;
     this.renderer.domElement.addEventListener("mousedown", (e) => {
+      if (e.button === 0) {
+        this._shootVandal();
+      }
       dragging = true;
       lastX = e.clientX;
+      lastY = e.clientY;
     });
     window.addEventListener("mouseup", () => {
       dragging = false;
@@ -1235,12 +1833,16 @@ class AnimeThreeIslandsApp {
     window.addEventListener("mousemove", (e) => {
       if (dragging) {
         const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
         lastX = e.clientX;
+        lastY = e.clientY;
         const sens = (this.settings.mouseSens / 100) * 0.45;
         this.camYawDeg = (this.camYawDeg - dx * sens) % 360;
+        this.fpsPitch = Math.max(-0.55, Math.min(0.55, this.fpsPitch - dy * 0.004));
       }
     });
 
+    document.getElementById("btn-cam-mode").addEventListener("click", () => this.toggleCameraMode());
     document.getElementById("btn-start-game").addEventListener("click", () => this.startGame());
     document.getElementById("btn-play-again").addEventListener("click", () => this.selectNight(this.currentNight, false));
     document.getElementById("btn-next-night").addEventListener("click", () => {
@@ -1267,7 +1869,6 @@ class AnimeThreeIslandsApp {
     document.getElementById("btn-pause-restart").addEventListener("click", () => this.selectNight(this.currentNight, false));
     document.getElementById("btn-pause-menu").addEventListener("click", () => this.selectNight(this.currentNight, true));
 
-    // Settings handlers
     const openSettings = () => document.getElementById("settings-modal").classList.remove("hidden");
     document.getElementById("btn-open-settings").addEventListener("click", openSettings);
     document.getElementById("btn-pause-settings").addEventListener("click", openSettings);
@@ -1288,8 +1889,8 @@ class AnimeThreeIslandsApp {
   }
 
   _readManualInput() {
-    if (this.keys["KeyQ"]) this.camYawDeg = (this.camYawDeg + 2.0) % 360;
-    if (this.keys["KeyC"]) this.camYawDeg = (this.camYawDeg - 2.0) % 360;
+    if (this.keys["KeyQ"]) this.camYawDeg = (this.camYawDeg + 2.2) % 360;
+    if (this.keys["KeyC"]) this.camYawDeg = (this.camYawDeg - 2.2) % 360;
 
     let mx = 0;
     let mz = 0;
@@ -1341,7 +1942,7 @@ class AnimeThreeIslandsApp {
 
     const elapsedSec = now / 1000.0;
     this.cloudsGroup.rotation.y = elapsedSec * 0.015;
-    this._syncEntities(elapsedSec);
+    this._syncEntities(elapsedSec, dt);
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame((t) => this._loop(t));
   }

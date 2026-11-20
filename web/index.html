@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Đảo Đèn Lồng — Ba Hòn Đảo (Phase 2 · Contract v1.1)</title>
+  <title>Đảo Đèn Lồng — Evernight HSR · Vandal FPS · Memoria Edition (Contract v1.1)</title>
   <style>
     :root {
       --night-sky: #0E1430;
@@ -43,6 +43,38 @@
       position: fixed; inset: 0; pointer-events: none; z-index: 2;
       background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(10, 14, 34, 0.68) 100%);
     }
+    /* Genshin Elemental Dash Screen Speed-Lines FX */
+    #genshin-dash-fx {
+      position: fixed; inset: 0; pointer-events: none; z-index: 3;
+      background: radial-gradient(circle at 50% 50%, transparent 45%, rgba(125, 249, 255, 0.28) 82%, rgba(242, 193, 78, 0.45) 100%);
+      opacity: 0;
+    }
+    /* Valorant FPS Crosshair & Hitmarker */
+    #fps-crosshair {
+      position: fixed; left: 50%; top: 50%;
+      width: 28px; height: 28px;
+      margin-left: -14px; margin-top: -14px;
+      pointer-events: none; z-index: 7;
+    }
+    .ch-line {
+      position: absolute; background: #00ffcc;
+      box-shadow: 0 0 4px #000;
+    }
+    .ch-top { left: 13px; top: 2px; width: 2px; height: 7px; }
+    .ch-bot { left: 13px; bottom: 2px; width: 2px; height: 7px; }
+    .ch-left { top: 13px; left: 2px; width: 7px; height: 2px; }
+    .ch-right { top: 13px; right: 2px; width: 7px; height: 2px; }
+    .ch-dot {
+      position: absolute; left: 13px; top: 13px; width: 2px; height: 2px;
+      background: #fff;
+    }
+    #fps-hitmarker {
+      position: fixed; left: 50%; top: 50%;
+      width: 34px; height: 34px;
+      margin-left: -17px; margin-top: -17px;
+      pointer-events: none; z-index: 8;
+      opacity: 0;
+    }
     #screen-pulse-ring {
       position: fixed; left: 50%; top: 55%;
       width: 120px; height: 120px;
@@ -53,7 +85,6 @@
       opacity: 0; pointer-events: none; z-index: 4;
       transform: scale(0.2);
     }
-    /* Wind Warning Leaf Overlay (Night 3) */
     #wind-indicator {
       position: fixed; top: 88px; left: 50%; transform: translateX(-50%);
       background: rgba(27, 35, 80, 0.9);
@@ -62,9 +93,7 @@
       font-size: 13px; font-weight: 800;
       padding: 6px 18px; border-radius: 999px;
       z-index: 7; pointer-events: none;
-      box-shadow: 0 0 18px rgba(143, 163, 184, 0.5);
     }
-    /* Off-screen Arrow pointing to nearest unlit lantern */
     #offscreen-arrow {
       position: fixed; left: 50%; top: 50%;
       width: 44px; height: 44px;
@@ -73,7 +102,6 @@
       display: flex; align-items: center; justify-content: center;
       filter: drop-shadow(0 0 8px #FFB347);
     }
-    /* HUD Container (Part 3 Mandatory Positions) */
     #hud {
       position: fixed; inset: 0; pointer-events: none; z-index: 6;
       padding: 16px 22px;
@@ -87,7 +115,7 @@
       box-shadow: 0 8px 26px rgba(0, 0, 0, 0.48);
       pointer-events: auto;
     }
-    /* Top-Left: Flames */
+    /* Top-Left: Flames & Character Title */
     #hud-top-left {
       position: fixed; top: 16px; left: 22px;
       display: flex; flex-direction: column; gap: 6px;
@@ -116,7 +144,7 @@
       padding: 3px 10px; border-radius: 999px;
       margin-top: 2px;
     }
-    /* Top-Center: Clock mm:ss (Red & Blinking when <= 30s) */
+    /* Top-Center: Clock mm:ss */
     #hud-top-center {
       position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
       text-align: center; min-width: 140px;
@@ -171,7 +199,31 @@
       background: var(--gold-border);
       color: #0E1430;
     }
-    /* Bottom-Center: 10-slot Firefly Bar & Interact Prompt */
+    /* Bottom-Left: Vandal Weapon & Magazine Ammo Counter */
+    #hud-bottom-left {
+      position: fixed; bottom: 16px; left: 22px;
+      display: flex; flex-direction: column; gap: 3px;
+      width: 245px;
+    }
+    .vandal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; font-weight: 900; letter-spacing: 1.5px;
+      color: #ff4655; text-transform: uppercase;
+    }
+    .vandal-ammo-row {
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    #vandal-clip {
+      font-size: 30px; font-weight: 900; color: var(--ui-text);
+      font-variant-numeric: tabular-nums;
+    }
+    #vandal-reserve {
+      font-size: 18px; font-weight: 800; color: var(--gold-border);
+    }
+    .vandal-mags-info {
+      font-size: 11px; color: #b9c2e0; font-weight: 700;
+    }
+    /* Bottom-Center: 10-slot Memoria Bar & Prompt */
     #hud-bottom-center {
       position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
       display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -191,8 +243,8 @@
       opacity: 1; transform: translateY(0);
     }
     .mote-bar-header {
-      font-size: 11px; font-weight: 800; color: var(--mote-halo);
-      margin-bottom: 5px; text-align: center;
+      font-size: 11px; font-weight: 800; color: #a8e6ff;
+      margin-bottom: 5px; text-align: center; letter-spacing: 0.8px;
     }
     .mote-slots-10 {
       display: flex; gap: 6px; align-items: center;
@@ -200,22 +252,22 @@
     .mote-slot {
       width: 22px; height: 22px; border-radius: 6px;
       background: rgba(255, 255, 255, 0.08);
-      border: 1.5px solid rgba(242, 193, 78, 0.4);
+      border: 1.5px solid rgba(168, 230, 255, 0.45);
       transition: all 0.18s;
     }
     .mote-slot.filled {
-      background: radial-gradient(circle, var(--mote-core) 30%, var(--mote-halo) 95%);
+      background: radial-gradient(circle, #ffffff 20%, #7df9ff 65%, #b86bff 100%);
       border-color: #ffffff;
-      box-shadow: 0 0 12px var(--mote-halo);
-      transform: scale(1.06);
+      box-shadow: 0 0 12px #7df9ff;
+      transform: scale(1.08);
     }
-    /* Bottom-Right: Cooldown Icons for Dash & Pulse */
+    /* Bottom-Right: Cooldown Icons for Genshin Dash & Pulse */
     #hud-bottom-right {
       position: fixed; bottom: 16px; right: 22px;
       display: flex; gap: 12px;
     }
     .cd-box {
-      width: 78px; height: 78px;
+      width: 82px; height: 78px;
       border-radius: 14px;
       background: var(--panel-bg);
       border: 2px solid var(--gold-border);
@@ -227,15 +279,9 @@
       border-color: var(--lantern-off);
       opacity: 0.78;
     }
-    .cd-key {
-      font-size: 10px; font-weight: 800; color: var(--gold-border);
-    }
-    .cd-name {
-      font-size: 13px; font-weight: 900; margin: 2px 0;
-    }
-    .cd-timer {
-      font-size: 11px; font-weight: 800; color: var(--mote-halo);
-    }
+    .cd-key { font-size: 10px; font-weight: 800; color: var(--gold-border); }
+    .cd-name { font-size: 12px; font-weight: 900; margin: 2px 0; }
+    .cd-timer { font-size: 11px; font-weight: 800; color: var(--mote-halo); }
     /* Center Anime Banner */
     #anime-banner {
       position: fixed; top: 24%; left: 50%;
@@ -254,7 +300,7 @@
       font-size: 25px; font-weight: 900; color: var(--ui-text);
       text-shadow: 0 0 16px var(--lantern-lit);
     }
-    /* Modals (Main Menu, Ông Đăng Intro, Pause, Settings, Result/Dawn) */
+    /* Modals */
     .overlay-modal {
       position: fixed; inset: 0; z-index: 20;
       background: radial-gradient(circle at 50% 45%, rgba(27, 35, 80, 0.88), rgba(10, 14, 34, 0.96));
@@ -286,9 +332,7 @@
       font-size: 14px; line-height: 1.6; color: var(--ui-text);
       text-align: left; margin-bottom: 20px;
     }
-    .ong-dang-speaker {
-      font-weight: 900; color: var(--gold-border); margin-bottom: 4px;
-    }
+    .ong-dang-speaker { font-weight: 900; color: var(--gold-border); margin-bottom: 4px; }
     .cta-btn {
       cursor: pointer;
       background: linear-gradient(135deg, var(--lantern-lit), #e07b1a);
@@ -316,7 +360,25 @@
 <body>
   <div id="canvas-container"></div>
   <div class="vignette"></div>
+  <div id="genshin-dash-fx"></div>
   <div id="screen-pulse-ring"></div>
+
+  <!-- Valorant FPS Crosshair & Hitmarker -->
+  <div id="fps-crosshair">
+    <div class="ch-line ch-top"></div>
+    <div class="ch-line ch-bot"></div>
+    <div class="ch-line ch-left"></div>
+    <div class="ch-line ch-right"></div>
+    <div class="ch-dot"></div>
+  </div>
+  <div id="fps-hitmarker">
+    <svg width="34" height="34" viewBox="0 0 34 34">
+      <line x1="4" y1="4" x2="12" y2="12" stroke="#ff4655" stroke-width="3" />
+      <line x1="30" y1="4" x2="22" y2="12" stroke="#ff4655" stroke-width="3" />
+      <line x1="4" y1="30" x2="12" y2="22" stroke="#ff4655" stroke-width="3" />
+      <line x1="30" y1="30" x2="22" y2="22" stroke="#ff4655" stroke-width="3" />
+    </svg>
+  </div>
 
   <!-- Wind Warning Indicator (Night 3) -->
   <div id="wind-indicator" class="hidden">🍃 Gió mạnh sắp thổi! Hãy giữ vững bước chân!</div>
@@ -334,11 +396,11 @@
     <div class="banner-main" id="banner-main">ĐÈN LỒNG KHAI SÁNG!</div>
   </div>
 
-  <!-- Mandatory HUD (Part 3) -->
+  <!-- Main HUD -->
   <div id="hud">
-    <!-- Top-Left: Flames -->
+    <!-- Top-Left: Flames & Evernight Title -->
     <div id="hud-top-left" class="anime-card">
-      <div class="night-badge" id="hud-night-label">ĐÊM 1 · ĐẢO BẾN</div>
+      <div class="night-badge" id="hud-night-label">ĐÊM 1 · ĐẢO BẾN · EVERNIGHT (HSR)</div>
       <div class="flames-row" id="flames-container">
         <span class="flame-pip"></span>
         <span class="flame-pip"></span>
@@ -353,7 +415,7 @@
       <div id="timer-display">05:00</div>
     </div>
 
-    <!-- Top-Right: Lanterns k/n & Score -->
+    <!-- Top-Right: Lanterns k/n & Score & Camera Mode Toggle -->
     <div id="hud-top-right" class="anime-card">
       <div class="top-right-stats">
         <div class="stat-box">
@@ -366,6 +428,7 @@
         </div>
       </div>
       <div class="btn-row">
+        <button class="anime-btn active" id="btn-cam-mode" title="Phím [V]: Đổi góc nhìn First-Person (FPS) / Third-Person (TPS)">🎥 Góc Nhìn: FPS (1st) [V]</button>
         <button class="anime-btn" id="btn-night-1">Đêm 1</button>
         <button class="anime-btn" id="btn-night-2">Đêm 2</button>
         <button class="anime-btn" id="btn-night-3">Đêm 3</button>
@@ -374,11 +437,28 @@
       </div>
     </div>
 
-    <!-- Bottom-Center: 10-slot Firefly Bar & Prompt -->
+    <!-- Bottom-Left: Vandal Assault Rifle & Floor Magazines -->
+    <div id="hud-bottom-left" class="anime-card">
+      <div class="vandal-header">
+        <span>🔫 VANDAL (VALORANT)</span>
+        <span id="vandal-state-badge" style="color:#00ffcc;">SẴN SÀNG</span>
+      </div>
+      <div class="vandal-ammo-row">
+        <span id="vandal-clip">25</span>
+        <span style="color:#8fa3b8;">/</span>
+        <span id="vandal-reserve">75</span>
+        <span style="font-size:12px;color:#b9c2e0;margin-left:auto;">Băng đạn nhặt: <b id="vandal-mags-picked" style="color:#F2C14E;">3</b></span>
+      </div>
+      <div class="vandal-mags-info">
+        <b>Chuột Trái / [B]</b>: Bắn Vandal · <b>[G]</b>: Thay Băng Đạn · Chạy qua <b>Băng Đạn</b> trên sàn để nhặt (+25)
+      </div>
+    </div>
+
+    <!-- Bottom-Center: 10-slot Memoria Bar & Prompt -->
     <div id="hud-bottom-center">
-      <div id="context-prompt">E — Nạp ánh sáng (0/10)</div>
+      <div id="context-prompt">E — Nạp Memoria (0/10)</div>
       <div class="anime-card">
-        <div class="mote-bar-header">ĐOM ĐÓM MANG THEO (<span id="carried-text">0/10</span>)</div>
+        <div class="mote-bar-header">💎 MEMORIA — ĐOM ĐÓM KÝ ỨC (<span id="carried-text">0/10</span>)</div>
         <div class="mote-slots-10" id="motes-pills">
           <div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div>
           <div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div><div class="mote-slot"></div>
@@ -386,15 +466,15 @@
       </div>
     </div>
 
-    <!-- Bottom-Right: Cooldown Icons for Dash & Pulse -->
+    <!-- Bottom-Right: Cooldown Icons for Genshin Dash & Pulse -->
     <div id="hud-bottom-right">
-      <div class="cd-box" id="cd-dash-box" title="Phím Shift / Chuột Phải: Lướt nhanh 14m/s">
+      <div class="cd-box" id="cd-dash-box" title="Phím Shift: Lướt Genshin Dash 14m/s">
         <span class="cd-key">[SHIFT]</span>
-        <span class="cd-name">LƯỚT</span>
+        <span class="cd-name">LƯỚT GENSHIN</span>
         <span class="cd-timer" id="cd-dash-text">Sẵn sàng</span>
       </div>
-      <div class="cd-box" id="cd-pulse-box" title="Phím R / Q: Tỏa Sáng (Tốn 3 Đom Đóm)">
-        <span class="cd-key">[R · 3 Đóm]</span>
+      <div class="cd-box" id="cd-pulse-box" title="Phím R: Tỏa Sáng (Tốn 3 Memoria)">
+        <span class="cd-key">[R · 3 Memoria]</span>
         <span class="cd-name">TỎA SÁNG</span>
         <span class="cd-timer" id="cd-pulse-text">Sẵn sàng</span>
       </div>
@@ -408,14 +488,12 @@
         <path id="intro-svg-path" fill="none" stroke="#F2C14E" stroke-width="3.5" stroke-linecap="round"
           d="M35 20 L65 20 L78 45 L65 78 L35 78 L22 45 Z M50 10 L50 20 M38 84 L62 84 M50 38 C56 45, 56 56, 50 64 C44 56, 44 45, 50 38 Z" />
       </svg>
-      <div class="modal-ep" id="intro-ep">ĐẢO ĐÈN LỒNG · BA HÒN ĐẢO</div>
+      <div class="modal-ep" id="intro-ep">EVERNIGHT (HSR) · VANDAL FPS · GENSHIN DASH</div>
       <h1 class="modal-title" id="intro-title">ĐÊM 1 — ĐẢO BẾN</h1>
       <div class="ong-dang-quote">
         <div class="ong-dang-speaker">🏮 Lời Ông Đăng (Lão Giữ Đèn):</div>
         <div id="ong-dang-text">
-          "Cháu Mây ơi, đêm nay sương đen đã phủ kín cả ba hòn đảo. Hãy bắt đầu từ <b>Đảo Bến</b>:
-          gom đủ 10 đom đóm cho mỗi chiếc Đèn Lồng Lớn, dùng <b>Lướt [Shift]</b> và <b>Tỏa Sáng [R]</b>
-          để đẩy lùi Bóng Mực trước khi bình minh lên nhé!"
+          "Chào <b>Evernight</b>! Đêm nay sương đen đã phủ kín cả ba hòn đảo. Hãy cầm chắc khẩu <b>Vandal</b> ở góc nhìn thứ nhất (hoặc bấm <b>[V]</b> để xem animation chạy bộ & <b>Lướt Genshin [Shift]</b>), nhặt thêm <b>Băng Đạn</b> trên sàn đấu và thu thập đủ 10 viên <b>Memoria</b> cho mỗi Đèn Lồng Lớn nhé!"
         </div>
       </div>
       <div>
@@ -444,7 +522,7 @@
     </div>
   </div>
 
-  <!-- 3. Settings Modal (Persisted in localStorage) -->
+  <!-- 3. Settings Modal -->
   <div class="overlay-modal hidden" id="settings-modal">
     <div class="modal-box">
       <div class="modal-ep">CÀI ĐẶT HỆ THỐNG</div>
